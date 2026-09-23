@@ -1,0 +1,28 @@
+name: Setup Kanban (labels, milestones, issues, project)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  setup-kanban:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Auth gh with PAT (needs repo + project scopes)
+        env:
+          KANBAN_PAT: ${{ secrets.KANBAN_PAT }}
+        run: |
+          if [ -z "$KANBAN_PAT" ]; then
+            echo "::error::Missing secret KANBAN_PAT. Create a PAT with scopes repo + project and save as Actions secret KANBAN_PAT."
+            exit 1
+          fi
+          echo "$KANBAN_PAT" | gh auth login --with-token
+          gh auth status
+
+      - name: Run kanban setup (idempotent)
+        run: bash scripts/setup-github-kanban.sh

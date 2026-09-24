@@ -15,9 +15,7 @@ class ApplicationReceivedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public readonly Application $application)
-    {
-    }
+    public function __construct(public readonly Application $application) {}
 
     public function envelope(): Envelope
     {

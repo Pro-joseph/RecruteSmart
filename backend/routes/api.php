@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\OfferController;
 use App\Http\Controllers\Api\OfferFormFieldController;
@@ -31,6 +32,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/offers/{offer}/regenerate-link', [OfferController::class, 'regenerateLink']);
     Route::get('/offers/{offer}/form-fields', [OfferFormFieldController::class, 'index']);
     Route::put('/offers/{offer}/form-fields', [OfferFormFieldController::class, 'update']);
+    Route::get('/offers/{offer}/applications', [ApplicationController::class, 'index']);
+    Route::get('/applications/{application}/files/{key}', [ApplicationController::class, 'download'])
+        ->where('key', '[a-z0-9_]+');
 });
 
 Route::get('/public/offers/{token}', [PublicOfferController::class, 'show'])

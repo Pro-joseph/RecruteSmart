@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property array<string, mixed>|null $answers
  * @property list<array<string, mixed>>|null $files
  * @property \Carbon\CarbonImmutable|null $consent_at
+ * @property \Carbon\CarbonImmutable|null $created_at
  */
 class Application extends Model
 {

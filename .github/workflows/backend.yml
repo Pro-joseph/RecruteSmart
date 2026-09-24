@@ -1,0 +1,72 @@
+name: backend
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: recruitment
+          POSTGRES_USER: recruit
+          POSTGRES_PASSWORD: recruit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U recruit -d recruitment"
+          --health-interval=5s --health-timeout=3s --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=3s --health-retries=10
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, pgsql, pdo_pgsql, redis, intl, zip, gd
+          coverage: none
+
+      - name: Composer validate + install
+        run: |
+          composer validate --strict
+          composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Pint (code style)
+        run: vendor/bin/pint --test
+
+      - name: PHPStan (Larastan)
+        run: vendor/bin/phpstan analyse --no-progress
+
+      - name: Composer audit
+        run: composer audit
+
+      - name: Prepare env + app key
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Tests
+        env:
+          DB_HOST: localhost
+          REDIS_HOST: localhost
+        run: php artisan test

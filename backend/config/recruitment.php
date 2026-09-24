@@ -57,6 +57,8 @@ return [
 
     'retention_months' => (int) env('RETENTION_MONTHS', 12),
 
+    'consent_version' => 'v1',
+
     'llm' => [
         'max_input_chars' => (int) env('LLM_MAX_INPUT_CHARS', 30000),
         'timeout' => (int) env('LLM_TIMEOUT', 60),

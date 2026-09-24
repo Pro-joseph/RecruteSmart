@@ -100,6 +100,12 @@ class Offer extends Model
         return $this->hasMany(OfferFormField::class)->orderBy('position');
     }
 
+    /** @return HasMany<Application, $this> */
+    public function applications(): HasMany
+    {
+        return $this->hasMany(Application::class);
+    }
+
     /** @param Builder<$this> $query */
     public function scopeForUser($query, int $userId): void
     {

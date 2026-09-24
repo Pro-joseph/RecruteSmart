@@ -86,6 +86,15 @@ class FormFieldService
         }
 
         DB::transaction(function () use ($offer, $fields, $catalog): void {
+            $existingKeys = $offer->formFields()->pluck('key')->all();
+            $removed = array_diff($existingKeys, array_column($fields, 'key'));
+
+            if ($removed !== [] && $offer->applications()->exists()) {
+                throw ValidationException::withMessages([
+                    'fields' => ['Used fields cannot be deleted once applications exist, hide them instead (is_hidden): '.implode(', ', $removed)],
+                ]);
+            }
+
             $offer->formFields()->delete();
 
             $position = 0;

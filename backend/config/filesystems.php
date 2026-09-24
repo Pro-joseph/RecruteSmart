@@ -47,6 +47,17 @@ return [
             'report' => false,
         ],
 
+        // Private disk for CVs and application files (RG-15).
+        // Never served publicly; access via authenticated routes only.
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'serve' => false,
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

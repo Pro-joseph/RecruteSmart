@@ -2,7 +2,7 @@
 
 Centralize applications per job offer: unique application link per offer, configurable form per offer, and AI-assisted screening (ATS compliance + match score).
 
-Full specification (FR): [`cahier-des-charges-plateforme-recrutement.md`](./cahier-des-charges-plateforme-recrutement.md) — functional spec (Part I) + technical spec (Part II).
+Full specification (FR): [`cahier-des-charges-plateforme-recrutement.md`](./docs/cahier-des-charges-plateforme-recrutement.md) — functional spec (Part I) + technical spec (Part II).
 
 ## 1. What it does
 
@@ -70,7 +70,7 @@ RecruteSmart/
 │     ├─ features/interviews/
 │     └─ features/forwards/
 ├─ docker-compose.yml        # nginx, app, horizon, scheduler, postgres, redis, mailpit (+minio)
-├─ cahier-des-charges-plateforme-recrutement.md
+├─ docs/                     # spec (FR) + LLM provider decision record
 └─ README.md
 ```
 

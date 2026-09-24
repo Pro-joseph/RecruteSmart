@@ -25,6 +25,10 @@ class OfferController extends Controller
         $query = Offer::query()
             ->forUser($request->user()->id)
             ->with('formFields')
+            ->withCount([
+                'applications',
+                'applications as new_applications_count' => fn ($q) => $q->where('status', 'new'),
+            ])
             ->latest();
 
         if ($request->filled('status')) {
@@ -48,7 +52,10 @@ class OfferController extends Controller
     public function show(Request $request, Offer $offer): JsonResponse
     {
         Gate::authorize('view', $offer);
-        $offer->load('formFields');
+        $offer->load('formFields')->loadCount([
+            'applications',
+            'applications as new_applications_count' => fn ($q) => $q->where('status', 'new'),
+        ]);
 
         return (new OfferResource($offer))->response($request);
     }

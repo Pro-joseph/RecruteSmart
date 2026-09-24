@@ -55,6 +55,8 @@ class OfferResource extends JsonResource
             'closed_at' => $offer->closed_at?->toIso8601String(),
             'created_at' => $offer->created_at?->toIso8601String(),
             'updated_at' => $offer->updated_at?->toIso8601String(),
+            'applications_count' => $this->whenCounted('applications'),
+            'new_applications_count' => $this->whenCounted('new_applications_count'),
             'form_fields' => OfferFormFieldResource::collection($this->whenLoaded('formFields')),
         ];
     }

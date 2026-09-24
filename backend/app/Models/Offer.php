@@ -7,6 +7,8 @@ namespace App\Models;
 use App\Enums\OfferStatus;
 use App\Enums\OfferType;
 use App\Enums\WorkMode;
+use Database\Factories\OfferFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Offer extends Model
 {
-    /** @use HasFactory<\Database\Factories\OfferFactory> */
+    /** @use HasFactory<OfferFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -82,13 +84,13 @@ class Offer extends Model
         return $this->hasMany(OfferFormField::class)->orderBy('position');
     }
 
-    /** @param \Illuminate\Database\Eloquent\Builder<$this> $query */
+    /** @param Builder<$this> $query */
     public function scopeForUser($query, int $userId): void
     {
         $query->where('user_id', $userId);
     }
 
-    /** @param \Illuminate\Database\Eloquent\Builder<$this> $query */
+    /** @param Builder<$this> $query */
     public function scopePublished($query): void
     {
         $query->where('status', OfferStatus::Published);
@@ -96,6 +98,10 @@ class Offer extends Model
 
     public function isPublished(): bool
     {
-        return $this->status === OfferStatus::Published;
+        /** @var mixed $status */
+        $status = $this->getAttribute('status');
+        $value = $status instanceof OfferStatus ? $status->value : (string) $status;
+
+        return $value === OfferStatus::Published->value;
     }
 }

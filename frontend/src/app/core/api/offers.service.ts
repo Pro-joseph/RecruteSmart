@@ -25,6 +25,19 @@ export interface CatalogField {
   required: boolean;
 }
 
+export interface ApplicationRow {
+  id: number;
+  full_name: string;
+  email: string;
+  status: string;
+  created_at: string;
+}
+
+export interface Paginated<T> {
+  data: T[];
+  meta: { current_page: number; last_page: number; total: number };
+}
+
 export interface Offer {
   id: number;
   title: string;
@@ -54,6 +67,8 @@ export interface Offer {
   deadline_at?: string | null;
   published_at?: string | null;
   closed_at?: string | null;
+  applications_count?: number;
+  new_applications_count?: number;
   form_fields?: OfferFormField[];
 }
 
@@ -133,5 +148,14 @@ export class OffersService {
         fields,
       }),
     ).then((r) => r.data);
+  }
+
+  listApplications(offerId: number, page = 1): Promise<Paginated<ApplicationRow>> {
+    const params = new HttpParams().set('page', page);
+    return firstValueFrom(
+      this.http.get<Paginated<ApplicationRow>>(`/api/v1/offers/${offerId}/applications`, {
+        params,
+      }),
+    );
   }
 }

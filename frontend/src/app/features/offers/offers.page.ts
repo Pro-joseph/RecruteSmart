@@ -42,6 +42,7 @@ import { Offer, OffersService } from '../../core/api/offers.service';
           @if (offer.public_url) {
             <button type="button" (click)="copy(offer.public_url!)">Copy link</button>
           }
+          <a [routerLink]="['/app/offers', offer.id]">Applications</a>
           <a [routerLink]="['/app/offers', offer.id, 'edit']">Edit</a>
           @if (offer.status === 'draft' || offer.status === 'closed') {
             <button type="button" (click)="publish(offer.id)">Publish</button>

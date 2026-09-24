@@ -37,6 +37,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/offers/offer-form.page').then((m) => m.OfferFormPage),
     canActivate: [authGuard],
   },
+  {
+    path: 'app/offers/:id',
+    loadComponent: () =>
+      import('./features/applications/workspace.page').then((m) => m.WorkspacePage),
+    canActivate: [authGuard],
+  },
   { path: '', redirectTo: '/app/offers', pathMatch: 'full' },
   { path: '**', redirectTo: '/app/offers' },
 ];

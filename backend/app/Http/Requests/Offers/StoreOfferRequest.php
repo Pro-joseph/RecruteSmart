@@ -6,6 +6,7 @@ namespace App\Http\Requests\Offers;
 
 use App\Enums\OfferType;
 use App\Enums\WorkMode;
+use App\Models\Offer;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -13,7 +14,7 @@ class StoreOfferRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('create', \App\Models\Offer::class) ?? false;
+        return $this->user()?->can('create', Offer::class) ?? false;
     }
 
     /**

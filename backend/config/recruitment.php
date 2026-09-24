@@ -14,6 +14,28 @@ return [
 
     'knockout_threshold' => 40,
 
+    // Predefined application-form field catalog (Part I §4.4).
+    // Copied into offer_form_fields when the recruiter selects a field.
+    // `locked` fields (full_name, email, cv) are always present and required.
+    // `sensitive` fields are optional by default and excluded from AI analysis.
+    'fields' => [
+        'full_name' => ['label' => 'Nom complet', 'type' => 'text', 'locked' => true, 'sensitive' => false, 'required' => true],
+        'email' => ['label' => 'Email', 'type' => 'email', 'locked' => true, 'sensitive' => false, 'required' => true],
+        'cv' => ['label' => 'CV (PDF, DOCX)', 'type' => 'file', 'locked' => true, 'sensitive' => false, 'required' => true],
+        'phone' => ['label' => 'Téléphone', 'type' => 'phone', 'locked' => false, 'sensitive' => false, 'required' => false],
+        'photo' => ['label' => 'Photo', 'type' => 'image', 'locked' => false, 'sensitive' => true, 'required' => false],
+        'age' => ['label' => 'Âge', 'type' => 'number', 'locked' => false, 'sensitive' => true, 'required' => false],
+        'birth_date' => ['label' => 'Date de naissance', 'type' => 'date', 'locked' => false, 'sensitive' => true, 'required' => false],
+        'city' => ['label' => 'Ville', 'type' => 'text', 'locked' => false, 'sensitive' => false, 'required' => false],
+        'country' => ['label' => 'Pays', 'type' => 'text', 'locked' => false, 'sensitive' => false, 'required' => false],
+        'linkedin' => ['label' => 'LinkedIn', 'type' => 'url', 'locked' => false, 'sensitive' => false, 'required' => false],
+        'portfolio' => ['label' => 'GitHub ou portfolio', 'type' => 'url', 'locked' => false, 'sensitive' => false, 'required' => false],
+        'cover_letter' => ['label' => 'Lettre de motivation', 'type' => 'textarea', 'locked' => false, 'sensitive' => false, 'required' => false],
+        'salary_expectation' => ['label' => 'Prétentions salariales', 'type' => 'number', 'locked' => false, 'sensitive' => false, 'required' => false],
+        'availability' => ['label' => 'Disponibilité ou préavis', 'type' => 'text', 'locked' => false, 'sensitive' => false, 'required' => false],
+        'diplomas' => ['label' => 'Diplômes et certificats', 'type' => 'file', 'locked' => false, 'sensitive' => false, 'required' => false],
+    ],
+
     'ats' => [
         'compliant_min' => 75,
         'improvable_min' => 50,

@@ -9,6 +9,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property FieldType $type
+ * @property bool $is_required
+ * @property bool $is_locked
+ * @property bool $is_sensitive
+ * @property bool $is_hidden
+ * @property list<string>|null $options
+ * @property array<string, mixed>|null $rules
+ */
 class OfferFormField extends Model
 {
     /** @use HasFactory<\Database\Factories\OfferFormFieldFactory> */

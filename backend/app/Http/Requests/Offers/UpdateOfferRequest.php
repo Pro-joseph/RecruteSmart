@@ -22,9 +22,6 @@ class UpdateOfferRequest extends StoreOfferRequest
         $rules = parent::rules();
 
         foreach ($rules as $field => $rule) {
-            if (in_array($field, ['title', 'type', 'description'], true)) {
-                continue;
-            }
             $rules[$field] = array_merge(['sometimes'], (array) $rule);
         }
 

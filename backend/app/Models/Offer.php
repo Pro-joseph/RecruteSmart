@@ -14,9 +14,24 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property OfferType $type
+ * @property WorkMode|null $work_mode
+ * @property OfferStatus $status
+ * @property list<string>|null $required_skills
+ * @property list<string>|null $preferred_skills
+ * @property list<array<string, mixed>>|null $languages
+ * @property list<string>|null $knockout_criteria
+ * @property array<string, mixed>|null $scoring_weights
+ * @property \Carbon\CarbonImmutable|null $deadline_at
+ * @property \Carbon\CarbonImmutable|null $published_at
+ * @property \Carbon\CarbonImmutable|null $closed_at
+ */
 class Offer extends Model
 {
-    /** @use HasFactory<OfferFactory> */
+    /** @use HasFactory<\Database\Factories\OfferFactory> */
     use HasFactory;
 
     protected $fillable = [

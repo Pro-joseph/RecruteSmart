@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\ApplicationStatus;
+use Carbon\CarbonImmutable;
+use Database\Factories\ApplicationFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,12 +18,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property ApplicationStatus $status
  * @property array<string, mixed>|null $answers
  * @property list<array<string, mixed>>|null $files
- * @property \Carbon\CarbonImmutable|null $consent_at
- * @property \Carbon\CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $consent_at
+ * @property CarbonImmutable|null $created_at
  */
 class Application extends Model
 {
-    /** @use HasFactory<\Database\Factories\ApplicationFactory> */
+    /** @use HasFactory<ApplicationFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -63,7 +66,7 @@ class Application extends Model
         return $this->belongsTo(Offer::class);
     }
 
-    /** @param \Illuminate\Database\Eloquent\Builder<$this> $query */
+    /** @param Builder<$this> $query */
     public function scopeForRecruiter($query, int $userId): void
     {
         $query->whereHas('offer', fn ($q) => $q->where('user_id', $userId));

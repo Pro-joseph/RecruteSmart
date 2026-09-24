@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Requests\Public;
 
 use App\Models\Offer;
-use App\Models\Offer;
 use App\Services\Applications\FieldRuleMapper;
 use Illuminate\Foundation\Http\FormRequest;
 

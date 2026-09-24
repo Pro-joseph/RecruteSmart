@@ -16,10 +16,7 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 class ApplicationSubmitter
 {
-    public function __construct(
-        private readonly FieldRuleMapper $mapper,
-        private readonly CaptchaVerifier $captcha,
-    ) {}
+    public function __construct(private readonly CaptchaVerifier $captcha) {}
 
     public function findOfferOrFail(string $token): Offer
     {

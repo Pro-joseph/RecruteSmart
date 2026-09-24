@@ -23,7 +23,12 @@ export class AuthService {
     ).then(() => undefined);
   }
 
-  async register(name: string, email: string, password: string, passwordConfirmation: string): Promise<AuthUser> {
+  async register(
+    name: string,
+    email: string,
+    password: string,
+    passwordConfirmation: string,
+  ): Promise<AuthUser> {
     await this.csrf();
     const res = await firstValueFrom(
       this.http.post<{ data: AuthUser }>('/api/v1/auth/register', {

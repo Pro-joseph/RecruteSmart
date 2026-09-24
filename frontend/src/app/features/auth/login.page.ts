@@ -11,16 +11,25 @@ import { AuthService } from '../../core/auth/auth.service';
     <h1>Login</h1>
     <form [formGroup]="form" (ngSubmit)="submit()">
       <label>Email <input type="email" formControlName="email" autocomplete="email" /></label>
-      <label>Password <input type="password" formControlName="password" autocomplete="current-password" /></label>
-      @if (error()) { <p role="alert">{{ error() }}</p> }
+      <label
+        >Password <input type="password" formControlName="password" autocomplete="current-password"
+      /></label>
+      @if (error()) {
+        <p role="alert">{{ error() }}</p>
+      }
       <button type="submit" [disabled]="form.invalid || busy()">Login</button>
     </form>
-    <p><a routerLink="/register">Register</a> · <a routerLink="/forgot-password">Forgot password</a></p>
+    <p>
+      <a routerLink="/register">Register</a> · <a routerLink="/forgot-password">Forgot password</a>
+    </p>
   `,
 })
 export class LoginPage {
   readonly form = new FormGroup({
-    email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
+    email: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.email],
+    }),
     password: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
   readonly error = signal<string | null>(null);

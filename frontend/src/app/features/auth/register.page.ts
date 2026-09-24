@@ -12,9 +12,16 @@ import { AuthService } from '../../core/auth/auth.service';
     <form [formGroup]="form" (ngSubmit)="submit()">
       <label>Name <input formControlName="name" autocomplete="name" /></label>
       <label>Email <input type="email" formControlName="email" autocomplete="email" /></label>
-      <label>Password <input type="password" formControlName="password" autocomplete="new-password" /></label>
-      <label>Confirm <input type="password" formControlName="password_confirmation" autocomplete="new-password" /></label>
-      @if (error()) { <p role="alert">{{ error() }}</p> }
+      <label
+        >Password <input type="password" formControlName="password" autocomplete="new-password"
+      /></label>
+      <label
+        >Confirm
+        <input type="password" formControlName="password_confirmation" autocomplete="new-password"
+      /></label>
+      @if (error()) {
+        <p role="alert">{{ error() }}</p>
+      }
       <button type="submit" [disabled]="form.invalid || busy()">Create account</button>
     </form>
     <p><a routerLink="/login">Back to login</a></p>
@@ -22,10 +29,22 @@ import { AuthService } from '../../core/auth/auth.service';
 })
 export class RegisterPage {
   readonly form = new FormGroup({
-    name: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(255)] }),
-    email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
-    password: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(8)] }),
-    password_confirmation: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    name: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.maxLength(255)],
+    }),
+    email: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.email],
+    }),
+    password: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.minLength(8)],
+    }),
+    password_confirmation: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
   });
   readonly error = signal<string | null>(null);
   readonly busy = signal(false);

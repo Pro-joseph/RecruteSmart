@@ -13,7 +13,9 @@ import { AuthService } from '../../core/auth/auth.service';
     <h1>Forgot password</h1>
     <form [formGroup]="form" (ngSubmit)="submit()">
       <label>Email <input type="email" formControlName="email" autocomplete="email" /></label>
-      @if (message()) { <p role="status">{{ message() }}</p> }
+      @if (message()) {
+        <p role="status">{{ message() }}</p>
+      }
       <button type="submit" [disabled]="form.invalid || busy()">Send reset link</button>
     </form>
     <p><a routerLink="/login">Back to login</a></p>
@@ -21,7 +23,10 @@ import { AuthService } from '../../core/auth/auth.service';
 })
 export class ForgotPasswordPage {
   readonly form = new FormGroup({
-    email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
+    email: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.email],
+    }),
   });
   readonly message = signal<string | null>(null);
   readonly busy = signal(false);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\FieldType;
+use Database\Factories\OfferFormFieldFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class OfferFormField extends Model
 {
-    /** @use HasFactory<\Database\Factories\OfferFormFieldFactory> */
+    /** @use HasFactory<OfferFormFieldFactory> */
     use HasFactory;
 
     protected $fillable = [

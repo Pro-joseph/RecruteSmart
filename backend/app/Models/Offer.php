@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\OfferStatus;
 use App\Enums\OfferType;
 use App\Enums\WorkMode;
+use Carbon\CarbonImmutable;
 use Database\Factories\OfferFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -25,13 +26,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property list<array<string, mixed>>|null $languages
  * @property list<string>|null $knockout_criteria
  * @property array<string, mixed>|null $scoring_weights
- * @property \Carbon\CarbonImmutable|null $deadline_at
- * @property \Carbon\CarbonImmutable|null $published_at
- * @property \Carbon\CarbonImmutable|null $closed_at
+ * @property CarbonImmutable|null $deadline_at
+ * @property CarbonImmutable|null $published_at
+ * @property CarbonImmutable|null $closed_at
  */
 class Offer extends Model
 {
-    /** @use HasFactory<\Database\Factories\OfferFactory> */
+    /** @use HasFactory<OfferFactory> */
     use HasFactory;
 
     protected $fillable = [

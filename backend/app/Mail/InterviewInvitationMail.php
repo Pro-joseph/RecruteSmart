@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\Models\EmailTemplate;
 use App\Models\Interview;
 use App\Services\Interviews\IcsCalendar;
+use App\Services\Mails\EmailTemplateRenderer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
@@ -17,32 +19,20 @@ class InterviewInvitationMail extends Mailable
 {
     use Queueable, SerializesModels;
 
+    private ?array $copy = null;
+
     public function __construct(public readonly Interview $interview) {}
 
     public function envelope(): Envelope
     {
-        $offer = $this->interview->application->offer;
-
-        return new Envelope(
-            subject: "Invitation à un entretien — {$offer->title}",
-        );
+        return new Envelope(subject: $this->copy()['subject']);
     }
 
     public function content(): Content
     {
-        $interview = $this->interview;
-        $application = $interview->application;
-
         return new Content(
-            view: 'emails.interview-invitation',
-            with: [
-                'name' => $application->full_name,
-                'offerTitle' => $application->offer->title,
-                'startsAt' => $interview->starts_at->format('d/m/Y à H:i'),
-                'duration' => $interview->duration_minutes,
-                'type' => $interview->type->value,
-                'location' => $interview->location_or_link,
-            ],
+            view: 'emails.rendered',
+            with: ['body' => $this->copy()['body']],
         );
     }
 
@@ -57,5 +47,28 @@ class InterviewInvitationMail extends Mailable
                 'invitation.ics',
             )->withMime('text/calendar; charset=utf-8'),
         ];
+    }
+
+    /** @return array{subject: string, body: string} */
+    private function copy(): array
+    {
+        if ($this->copy === null) {
+            $interview = $this->interview;
+            $application = $interview->application;
+
+            $this->copy = app(EmailTemplateRenderer::class)->render(
+                $interview->creator,
+                EmailTemplate::INVITATION,
+                [
+                    'candidate_name' => $application->full_name,
+                    'offer_title' => $application->offer->title,
+                    'starts_at' => $interview->starts_at->format('d/m/Y à H:i'),
+                    'duration' => (string) $interview->duration_minutes,
+                    'location' => $interview->location_or_link,
+                ],
+            );
+        }
+
+        return $this->copy;
     }
 }

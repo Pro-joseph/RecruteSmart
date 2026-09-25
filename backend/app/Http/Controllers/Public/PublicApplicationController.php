@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\SubmitApplicationRequest;
 use App\Mail\ApplicationReceivedMail;
+use App\Mail\RecruiterNewApplicationMail;
 use App\Services\Applications\ApplicationSubmitter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\UploadedFile;
@@ -43,6 +44,16 @@ class PublicApplicationController extends Controller
             Mail::to($application->email)->send(new ApplicationReceivedMail($application));
         } catch (\Throwable $e) {
             Log::warning('Confirmation email failed', ['application_id' => $application->id, 'error' => $e->getMessage()]);
+        }
+
+        // EF-1101: notify the recruiter, also never breaking the submission.
+        try {
+            $offer->loadMissing('user');
+            if ($offer->user !== null) {
+                Mail::to($offer->user->email)->queue(new RecruiterNewApplicationMail($application));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Recruiter notification failed', ['application_id' => $application->id, 'error' => $e->getMessage()]);
         }
 
         return response()->json([

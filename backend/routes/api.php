@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\EmailTemplateController;
 use App\Http\Controllers\Api\ForwardController;
 use App\Http\Controllers\Api\InterviewController;
 use App\Http\Controllers\Api\OfferController;
@@ -52,6 +53,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/forwards', [ForwardController::class, 'store']);
     Route::get('/forwards', [ForwardController::class, 'index']);
     Route::get('/forwards/{forward}', [ForwardController::class, 'show']);
+    Route::get('/settings/email-templates', [EmailTemplateController::class, 'index']);
+    Route::put('/settings/email-templates/{key}', [EmailTemplateController::class, 'update']);
+    Route::delete('/settings/email-templates/{key}', [EmailTemplateController::class, 'reset']);
 });
 
 Route::get('/public/offers/{token}', [PublicOfferController::class, 'show'])

@@ -11,5 +11,6 @@ enum ApplicationEventType: string
     case InterviewPlanned = 'interview_planned';
     case InterviewUpdated = 'interview_updated';
     case Forwarded = 'forwarded';
+    case ForwardCreated = 'forward_created';
     case AnalysisCompleted = 'analysis_completed';
 }

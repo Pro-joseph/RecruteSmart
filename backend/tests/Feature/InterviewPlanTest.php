@@ -86,7 +86,7 @@ it('builds a valid .ics calendar attachment (EF-903)', function (): void {
         ->and(substr_count($ics, "\r\n"))->toBeGreaterThan(5);
 
     $rendered = (new InterviewInvitationMail($interview))->render();
-    expect($rendered)->toContain('entretien')->toContain($application->full_name);
+    expect($rendered)->toContain('entretien')->toContain(e($application->full_name));
 });
 
 it('validates the interview payload and blocks other recruiters', function (): void {

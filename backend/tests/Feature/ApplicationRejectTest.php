@@ -68,7 +68,7 @@ it('queues the refusal email when requested (EF-905)', function (): void {
     });
 
     $rendered = (new CandidateRejectedMail($application, 'Nous gardons votre profil.'))->render();
-    expect($rendered)->toContain('Nous gardons votre profil.')->toContain($application->full_name);
+    expect($rendered)->toContain('Nous gardons votre profil.')->toContain(e($application->full_name));
 });
 
 it('validates the refusal payload and blocks other recruiters', function (): void {

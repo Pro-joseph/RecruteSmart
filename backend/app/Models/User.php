@@ -25,6 +25,12 @@ class User extends Authenticatable
         return $this->hasMany(Offer::class);
     }
 
+    /** @return HasMany<Forward, $this> */
+    public function forwards(): HasMany
+    {
+        return $this->hasMany(Forward::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

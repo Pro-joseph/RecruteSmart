@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\ApplicationStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Applications\AddNoteRequest;
+use App\Http\Requests\Applications\BulkStatusRequest;
+use App\Http\Requests\Applications\UpdateStatusRequest;
 use App\Http\Resources\ApplicationDetailResource;
 use App\Http\Resources\ApplicationEventResource;
 use App\Http\Resources\ApplicationResource;
 use App\Jobs\AnalyzeApplicationJob;
 use App\Models\Application;
 use App\Models\Offer;
+use App\Services\Applications\ApplicationUpdater;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -78,6 +83,45 @@ class ApplicationController extends Controller
             ->get();
 
         return ApplicationEventResource::collection($events)->response($request);
+    }
+
+    public function updateStatus(UpdateStatusRequest $request, Application $application): JsonResponse
+    {
+        $status = ApplicationStatus::from((string) $request->validated('status'));
+
+        app(ApplicationUpdater::class)->changeStatus($application, $status, $request->user());
+
+        return response()->json(['data' => ['status' => $application->status->value]]);
+    }
+
+    public function addNote(AddNoteRequest $request, Application $application): JsonResponse
+    {
+        $data = $request->validated();
+
+        app(ApplicationUpdater::class)->addNote(
+            $application,
+            isset($data['note']) ? (string) $data['note'] : null,
+            isset($data['rating']) ? (int) $data['rating'] : null,
+            $request->user(),
+        );
+
+        return response()->json(['data' => ['rating' => $application->rating]]);
+    }
+
+    public function bulkStatus(BulkStatusRequest $request, Offer $offer): JsonResponse
+    {
+        $ids = array_map('intval', (array) $request->validated('application_ids'));
+        $status = ApplicationStatus::from((string) $request->validated('status'));
+        $updater = app(ApplicationUpdater::class);
+
+        $updated = 0;
+        foreach ($offer->applications()->whereKey($ids)->get() as $application) {
+            if ($updater->changeStatus($application, $status, $request->user())) {
+                $updated++;
+            }
+        }
+
+        return response()->json(['data' => ['updated' => $updated]]);
     }
 
     public function download(Request $request, Application $application, string $key): StreamedResponse

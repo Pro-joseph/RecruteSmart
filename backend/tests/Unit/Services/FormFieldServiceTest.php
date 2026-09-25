@@ -40,7 +40,7 @@ it('syncs flags from the catalog, forcing locked required', function (): void {
         ['key' => 'phone', 'label' => 'Tél', 'type' => 'phone', 'is_required' => true],
     ]);
 
-    $fields = $this->offer->fresh()?->formFields->keyBy('key') ?? collect();
+    $fields = $this->offer->formFields()->get()->keyBy('key');
 
     expect($fields['photo']['is_sensitive'])->toBeTrue()
         ->and($fields['phone']['is_required'])->toBeTrue()

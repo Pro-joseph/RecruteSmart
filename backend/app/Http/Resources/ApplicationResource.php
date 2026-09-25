@@ -21,6 +21,12 @@ class ApplicationResource extends JsonResource
         /** @var Application $application */
         $application = $this->resource;
 
+        $analysis = $application->relationLoaded('analysis') ? $application->analysis : null;
+        $offer = $application->relationLoaded('offer') ? $application->offer : null;
+        $skills = $application->relationLoaded('skills')
+            ? $application->skills->pluck('slug')->values()->all()
+            : [];
+
         return [
             'id' => $application->id,
             'full_name' => $application->full_name,
@@ -29,6 +35,18 @@ class ApplicationResource extends JsonResource
             'status' => $application->status->value,
             'rating' => $application->rating,
             'created_at' => $application->created_at?->toIso8601String(),
+            'analysis' => $analysis === null ? null : [
+                'status' => $analysis->status->value,
+                'match_score' => $analysis->match_score,
+                'ats_score' => $analysis->ats_score,
+                'ats_verdict' => $analysis->ats_verdict?->value,
+                'years_experience' => $analysis->years_experience !== null ? (float) $analysis->years_experience : null,
+                'city' => $analysis->city,
+                'skills' => $skills,
+                'is_stale' => $offer !== null && $analysis->criteria_version < $offer->criteria_version,
+                'error_code' => $analysis->error_code,
+                'error_message' => $analysis->error_message,
+            ],
         ];
     }
 }

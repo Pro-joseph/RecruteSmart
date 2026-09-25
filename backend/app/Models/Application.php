@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property int $id
@@ -64,6 +66,18 @@ class Application extends Model
     public function offer(): BelongsTo
     {
         return $this->belongsTo(Offer::class);
+    }
+
+    /** @return HasOne<ApplicationAnalysis, $this> */
+    public function analysis(): HasOne
+    {
+        return $this->hasOne(ApplicationAnalysis::class);
+    }
+
+    /** @return BelongsToMany<Skill, $this> */
+    public function skills(): BelongsToMany
+    {
+        return $this->belongsToMany(Skill::class);
     }
 
     /** @param Builder<$this> $query */

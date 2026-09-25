@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Applications;
 
+use App\Enums\AnalysisStatus;
 use App\Enums\OfferStatus;
+use App\Jobs\AnalyzeApplicationJob;
 use App\Models\Application;
 use App\Models\Offer;
 use Illuminate\Http\UploadedFile;
@@ -102,6 +104,14 @@ class ApplicationSubmitter
                 'consent_at' => now(),
                 'consent_version' => config('recruitment.consent_version', 'v1'),
             ]);
+
+            $application->analysis()->create([
+                'status' => AnalysisStatus::Pending,
+                'criteria_version' => $offer->criteria_version,
+                'prompt_version' => (string) config('llm.prompt_version', 'v1'),
+            ]);
+
+            AnalyzeApplicationJob::dispatch($application->id)->afterCommit();
 
             return $application;
         });

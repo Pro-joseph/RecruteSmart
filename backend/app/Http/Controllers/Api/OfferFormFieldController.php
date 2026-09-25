@@ -31,6 +31,7 @@ class OfferFormFieldController extends Controller
     public function index(Request $request, Offer $offer): JsonResponse
     {
         Gate::authorize('manageFormFields', $offer);
+        $offer->load('formFields');
 
         return OfferFormFieldResource::collection($offer->formFields)->response($request);
     }

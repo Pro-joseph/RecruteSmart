@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Offers\StoreOfferRequest;
 use App\Http\Requests\Offers\UpdateOfferRequest;
 use App\Http\Resources\OfferResource;
+use App\Jobs\AnalyzeApplicationJob;
 use App\Models\Offer;
 use App\Services\Offers\OfferService;
 use Illuminate\Http\JsonResponse;
@@ -110,5 +111,24 @@ class OfferController extends Controller
         $updated->load('formFields');
 
         return (new OfferResource($updated))->response($request);
+    }
+
+    public function reanalyze(Offer $offer): JsonResponse
+    {
+        Gate::authorize('update', $offer);
+
+        $staleIds = $offer->applications()
+            ->whereHas('analysis', fn ($q) => $q->where(
+                'application_analyses.criteria_version',
+                '<',
+                $offer->criteria_version,
+            ))
+            ->pluck('id');
+
+        foreach ($staleIds as $id) {
+            AnalyzeApplicationJob::dispatch((int) $id);
+        }
+
+        return response()->json(['data' => ['queued' => $staleIds->count()]], 202);
     }
 }

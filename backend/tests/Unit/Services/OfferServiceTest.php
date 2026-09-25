@@ -22,7 +22,7 @@ it('seeds locked fields on creation', function (): void {
         'description' => 'Backend API',
     ]);
 
-    expect($offer->formFields->pluck('key')->all())
+    expect($offer->formFields()->pluck('key')->all())
         ->toBe(['full_name', 'email', 'cv'])
         ->and($offer->status)->toBe(OfferStatus::Draft);
 });
@@ -66,7 +66,7 @@ it('duplicates as draft with copied fields and fresh token', function (): void {
         ->and($copy->status)->toBe(OfferStatus::Draft)
         ->and($copy->public_token)->toBeNull()
         ->and($copy->title)->toEndWith('(copie)')
-        ->and($copy->formFields->pluck('key')->all())->toBe(['full_name', 'email', 'cv']);
+        ->and($copy->formFields()->pluck('key')->all())->toBe(['full_name', 'email', 'cv']);
 });
 
 it('regenerates the public link', function (): void {

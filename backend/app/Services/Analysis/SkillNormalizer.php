@@ -33,10 +33,6 @@ class SkillNormalizer
         $unique = [];
 
         foreach ($skills as $skill) {
-            if (! is_string($skill)) {
-                continue;
-            }
-
             $name = SkillAliases::canonical($this->stripPunctuation($skill));
             if ($name === '') {
                 continue;

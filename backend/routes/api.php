@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\EmailTemplateController;
@@ -37,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/offers/{offer}/reanalyze', [OfferController::class, 'reanalyze']);
     Route::get('/offers/{offer}/form-fields', [OfferFormFieldController::class, 'index']);
     Route::put('/offers/{offer}/form-fields', [OfferFormFieldController::class, 'update']);
+    Route::get('/offers/{offer}/stats', [OfferController::class, 'stats']);
     Route::get('/offers/{offer}/applications', [ApplicationController::class, 'index']);
     Route::get('/offers/{offer}/skills', [ApplicationController::class, 'skills']);
     Route::post('/offers/{offer}/applications/bulk-status', [ApplicationController::class, 'bulkStatus']);
@@ -45,6 +47,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/applications/{application}/notes', [ApplicationController::class, 'addNote']);
     Route::post('/applications/{application}/reject', [ApplicationController::class, 'reject']);
     Route::get('/applications/{application}', [ApplicationController::class, 'show']);
+    Route::get('/applications/{application}/export', [ApplicationController::class, 'export']);
+    Route::delete('/applications/{application}', [ApplicationController::class, 'destroy']);
     Route::get('/applications/{application}/events', [ApplicationController::class, 'events']);
     Route::post('/applications/{application}/interviews', [InterviewController::class, 'store']);
     Route::patch('/interviews/{interview}', [InterviewController::class, 'update']);
@@ -57,6 +61,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/settings/email-templates', [EmailTemplateController::class, 'index']);
     Route::put('/settings/email-templates/{key}', [EmailTemplateController::class, 'update']);
     Route::delete('/settings/email-templates/{key}', [EmailTemplateController::class, 'reset']);
+
+    // EF-1205: admin supervision of users and AI usage.
+    Route::prefix('admin')->middleware('admin')->group(function (): void {
+        Route::get('/users', [AdminUserController::class, 'users']);
+        Route::get('/usage', [AdminUserController::class, 'usage']);
+    });
 });
 
 Route::get('/public/offers/{token}', [PublicOfferController::class, 'show'])

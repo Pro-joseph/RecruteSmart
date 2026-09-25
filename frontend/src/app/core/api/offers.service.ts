@@ -76,6 +76,21 @@ export interface SkillFacet {
   applications_count: number;
 }
 
+/** EF-508: per-offer dashboard numbers. */
+export interface OfferStats {
+  applications_count: number;
+  by_status: Record<string, number>;
+  avg_match_score: number | null;
+  avg_ats_score: number | null;
+  score_buckets: {
+    '0_39': number;
+    '40_59': number;
+    '60_79': number;
+    '80_100': number;
+    unscored: number;
+  };
+}
+
 export interface Paginated<T> {
   data: T[];
   meta: { current_page: number; last_page: number; total: number };
@@ -218,6 +233,13 @@ export class OffersService {
   applicationSkills(offerId: number): Promise<SkillFacet[]> {
     return firstValueFrom(
       this.http.get<{ data: SkillFacet[] }>(`/api/v1/offers/${offerId}/skills`),
+    ).then((r) => r.data);
+  }
+
+  /** EF-508: totals, status split, averages and score buckets. */
+  stats(offerId: number): Promise<OfferStats> {
+    return firstValueFrom(
+      this.http.get<{ data: OfferStats }>(`/api/v1/offers/${offerId}/stats`),
     ).then((r) => r.data);
   }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Enums\ApplicationStatus;
+use App\Enums\AuditAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Applications\AddNoteRequest;
 use App\Http\Requests\Applications\BulkStatusRequest;
@@ -19,13 +20,17 @@ use App\Mail\CandidateRejectedMail;
 use App\Models\Application;
 use App\Models\Offer;
 use App\Models\Skill;
+use App\Services\Applications\ApplicationDeleter;
+use App\Services\Applications\ApplicationExporter;
 use App\Services\Applications\ApplicationFilter;
 use App\Services\Applications\ApplicationUpdater;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -156,6 +161,34 @@ class ApplicationController extends Controller
         return response()->json(['data' => ['updated' => $updated]]);
     }
 
+    /** Definitive deletion: rows, private files, forward snapshot (EF-1201, RG-13). */
+    public function destroy(Request $request, Application $application): JsonResponse
+    {
+        $application->load('offer');
+        Gate::authorize('delete', $application);
+
+        app(ApplicationDeleter::class)->delete($application, $request->user(), $request->ip());
+
+        return response()->json(null, 204);
+    }
+
+    /** One-click candidate export: donnees.json + CV + attachments as a ZIP (EF-1203, RG-14). */
+    public function export(Request $request, Application $application): BinaryFileResponse
+    {
+        $application->load('offer');
+        Gate::authorize('view', $application);
+
+        $path = app(ApplicationExporter::class)->export(
+            $application,
+            $request->user(),
+            $request->ip(),
+        );
+
+        return response()->download($path, sprintf('candidat-%d-%s.zip', $application->id, now()->format('Ymd-His')), [
+            'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(true);
+    }
+
     public function download(Request $request, Application $application, string $key): StreamedResponse
     {
         $application->load('offer');
@@ -176,6 +209,14 @@ class ApplicationController extends Controller
         if (! Storage::disk('private')->exists($path)) {
             throw new NotFoundHttpException('Fichier introuvable.');
         }
+
+        app(AuditLogger::class)->log(
+            $request->user(),
+            AuditAction::CvDownloaded,
+            $application,
+            ['key' => $key],
+            $request->ip(),
+        );
 
         return Storage::disk('private')->download($path, $name);
     }

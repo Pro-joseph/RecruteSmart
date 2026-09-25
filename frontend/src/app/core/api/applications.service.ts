@@ -167,6 +167,29 @@ export class ApplicationsService {
     ).then((r) => r.data.status);
   }
 
+  /** EF-1201: definitive deletion of the candidate (rows and files). */
+  destroy(id: number): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`/api/v1/applications/${id}`));
+  }
+
+  /** EF-1203: one-click ZIP export (data + CV + attachments) as a download. */
+  async exportZip(id: number, fallbackName: string): Promise<void> {
+    const response = await fetch(`/api/v1/applications/${id}/export`, { credentials: 'include' });
+    if (!response.ok) throw new Error(`Export failed: ${response.status}`);
+
+    const disposition = response.headers.get('content-disposition') ?? '';
+    const match = disposition.match(/filename="?([^";]+)"?/);
+    const name = match ? match[1] : `${fallbackName}.zip`;
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = name;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   /** Authenticated fetch of a private file (CV) as an object URL for preview. */
   async blobUrl(url: string): Promise<string> {
     const response = await fetch(url, { credentials: 'include' });

@@ -3,6 +3,9 @@
     <a routerLink="/app/offers" routerLinkActive="active">Offres</a>
     <a routerLink="/app/forwards" routerLinkActive="active">Transferts</a>
     <a routerLink="/app/settings" routerLinkActive="active">Paramètres</a>
+    @if (u.is_admin) {
+      <a routerLink="/app/admin" routerLinkActive="active">Administration</a>
+    }
     <span class="spacer"></span>
     <span class="who">{{ u.name }}</span>
     <button type="button" class="btn btn-ghost" (click)="logout()">Déconnexion</button>

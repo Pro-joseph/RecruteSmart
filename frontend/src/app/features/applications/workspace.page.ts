@@ -5,6 +5,7 @@ import {
   ApplicationRow,
   Offer,
   OffersService,
+  OfferStats,
   Paginated,
   SkillFacet,
 } from '../../core/api/offers.service';
@@ -57,6 +58,23 @@ const SORTABLE: SortableColumn[] = [
           <button type="button" class="btn btn-ghost" (click)="copy(o.public_url!)">Copier</button>
         </p>
       }
+    }
+
+    @if (stats(); as s) {
+      <div class="stat-chips" aria-label="Statistiques de l'offre">
+        <span class="chip">{{ s.applications_count }} candidature(s)</span>
+        @if (s.avg_match_score !== null) {
+          <span class="chip">Score moyen {{ s.avg_match_score }}%</span>
+        }
+        @if (s.avg_ats_score !== null) {
+          <span class="chip">ATS moyen {{ s.avg_ats_score }}</span>
+        }
+        <span class="chip">{{ s.score_buckets['80_100'] }} ≥ 80%</span>
+        <span class="chip">{{ s.score_buckets['40_59'] + s.score_buckets['0_39'] }} &lt; 60%</span>
+        @if (s.score_buckets.unscored) {
+          <span class="chip muted-chip">{{ s.score_buckets.unscored }} non analysée(s)</span>
+        }
+      </div>
     }
 
     <div class="toolbar">
@@ -284,6 +302,22 @@ const SORTABLE: SortableColumn[] = [
   `,
   styles: [
     `
+      .stat-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-top: 0.65rem;
+      }
+
+      .stat-chips .chip {
+        font-size: 0.8rem;
+        padding: 0.18rem 0.65rem;
+      }
+
+      .stat-chips .muted-chip {
+        opacity: 0.75;
+      }
+
       .toolbar {
         display: flex;
         align-items: end;
@@ -350,6 +384,7 @@ const SORTABLE: SortableColumn[] = [
 })
 export class WorkspacePage implements OnInit, OnDestroy {
   readonly offer = signal<Offer | null>(null);
+  readonly stats = signal<OfferStats | null>(null);
   readonly rows = signal<ApplicationRow[]>([]);
   readonly facets = signal<SkillFacet[]>([]);
   readonly page = signal(1);
@@ -414,6 +449,11 @@ export class WorkspacePage implements OnInit, OnDestroy {
       this.offer.set(await this.api.get(this.offerId));
     } catch {
       this.error.set('Impossible de charger cette offre.');
+    }
+    try {
+      this.stats.set(await this.api.stats(this.offerId));
+    } catch {
+      this.stats.set(null);
     }
   }
 

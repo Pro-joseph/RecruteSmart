@@ -43,6 +43,12 @@ export const routes: Routes = [
       import('./features/applications/workspace.page').then((m) => m.WorkspacePage),
     canActivate: [authGuard],
   },
+  {
+    path: 'app/offers/:id/applications/:appId',
+    loadComponent: () =>
+      import('./features/applications/candidate-fiche.page').then((m) => m.CandidateFichePage),
+    canActivate: [authGuard],
+  },
   { path: '', redirectTo: '/app/offers', pathMatch: 'full' },
   { path: '**', redirectTo: '/app/offers' },
 ];

@@ -2,7 +2,6 @@ import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
-  ApplicationListParams,
   ApplicationRow,
   Offer,
   OffersService,
@@ -14,6 +13,10 @@ import {
   FilterPatch,
   ListFilters,
   ListFiltersComponent,
+  activeFilterCount,
+  filterQueryParams,
+  parseFilterParams,
+  toListParams,
 } from './list-filters.component';
 import { STATUS_BADGES, STATUS_LABELS, VERDICT_BADGES, VERDICT_LABELS } from './application-labels';
 
@@ -29,15 +32,6 @@ const SORTABLE: SortableColumn[] = [
   { key: 'years_experience', label: 'Exp.' },
   { key: 'created_at', label: 'Date' },
 ];
-
-const NUMERIC_FILTERS = new Set([
-  'min_score',
-  'max_score',
-  'ats_min',
-  'ats_max',
-  'exp_min',
-  'exp_max',
-]);
 
 @Component({
   selector: 'app-workspace',
@@ -116,7 +110,10 @@ const NUMERIC_FILTERS = new Set([
             @for (app of rows(); track app.id) {
               <tr>
                 <td>
-                  <a [routerLink]="['/app/offers', offerId, 'applications', app.id]">
+                  <a
+                    [routerLink]="['/app/offers', offerId, 'applications', app.id]"
+                    [queryParams]="listQuery()"
+                  >
                     {{ app.full_name }}
                   </a>
                   <div class="muted small">{{ app.email }}</div>
@@ -307,7 +304,7 @@ export class WorkspacePage implements OnInit, OnDestroy {
     void this.loadFacets();
 
     this.route.queryParams.subscribe((params) => {
-      this.filters.set(this.parseFilters(params));
+      this.filters.set(parseFilterParams(params));
       this.sort.set(typeof params['sort'] === 'string' ? params['sort'] : '-match_score');
       void this.loadPage(Number(params['page']) || 1, { silent: false });
     });
@@ -348,24 +345,7 @@ export class WorkspacePage implements OnInit, OnDestroy {
       this.refreshing.set(true);
     }
     try {
-      const f = this.filters();
-      const params: ApplicationListParams = { page, sort: this.sort() };
-      if (f.q) params.q = f.q;
-      for (const key of NUMERIC_FILTERS) {
-        const value = (f as unknown as Record<string, string>)[key];
-        if (value !== '') params[key as 'min_score'] = Number(value);
-      }
-      if (f.ats) params.ats = f.ats;
-      if (f.city) params.city = f.city;
-      if (f.country) params.country = f.country;
-      if (f.applied_from) params.applied_from = f.applied_from;
-      if (f.applied_to) params.applied_to = f.applied_to;
-      if (f.skills.length) {
-        params.skills = f.skills;
-        params.skills_mode = f.skills_mode;
-      }
-      if (f.status.length) params.status = f.status;
-
+      const params = toListParams(this.filters(), this.sort(), page);
       const res: Paginated<ApplicationRow> = await this.api.listApplications(this.offerId, params);
       this.rows.set(res.data);
       this.page.set(res.meta.current_page);
@@ -401,7 +381,7 @@ export class WorkspacePage implements OnInit, OnDestroy {
   onFilterChange(event: FilterPatch): void {
     this.filters.update((current) => ({ ...current, ...event.patch }));
     if (this.patchTimer !== null) clearTimeout(this.patchTimer);
-    const apply = () => this.navigate(this.filtersToParams(this.filters()));
+    const apply = () => this.navigate({ page: undefined });
     if (event.debounce) {
       this.patchTimer = setTimeout(apply, 300);
     } else {
@@ -431,27 +411,21 @@ export class WorkspacePage implements OnInit, OnDestroy {
     });
   }
 
+  /** Query params shared with the fiche so prev/next and back keep the list context. */
+  listQuery(): Record<string, unknown> {
+    return {
+      ...filterQueryParams(this.filters()),
+      sort: this.sort() === '-match_score' ? undefined : this.sort(),
+      page: this.page() > 1 ? this.page() : undefined,
+    };
+  }
+
   go(delta: number): void {
     this.navigate({ page: this.page() + delta <= 1 ? undefined : this.page() + delta });
   }
 
   hasFilters(): boolean {
-    return (
-      this.filters().q !== '' ||
-      this.filters().min_score !== '' ||
-      this.filters().max_score !== '' ||
-      this.filters().ats !== '' ||
-      this.filters().ats_min !== '' ||
-      this.filters().ats_max !== '' ||
-      this.filters().exp_min !== '' ||
-      this.filters().exp_max !== '' ||
-      this.filters().city !== '' ||
-      this.filters().country !== '' ||
-      this.filters().applied_from !== '' ||
-      this.filters().applied_to !== '' ||
-      this.filters().skills.length > 0 ||
-      this.filters().status.length > 0
-    );
+    return activeFilterCount(this.filters()) > 0;
   }
 
   analysisBadge(app: ApplicationRow): { label: string; cls: string } | null {
@@ -489,9 +463,7 @@ export class WorkspacePage implements OnInit, OnDestroy {
 
   private navigate(overrides: Record<string, unknown>): void {
     const query: Record<string, unknown> = {
-      ...this.filtersToParams(this.filters()),
-      sort: this.sort() === '-match_score' ? undefined : this.sort(),
-      page: this.page() > 1 ? this.page() : undefined,
+      ...this.listQuery(),
       ...overrides,
     };
     for (const key of Object.keys(query)) {
@@ -502,56 +474,6 @@ export class WorkspacePage implements OnInit, OnDestroy {
       queryParams: query,
       onSameUrlNavigation: 'ignore',
     });
-  }
-
-  private filtersToParams(f: ListFilters): Record<string, string | string[] | undefined> {
-    return {
-      q: f.q || undefined,
-      min_score: f.min_score || undefined,
-      max_score: f.max_score || undefined,
-      ats: f.ats || undefined,
-      ats_min: f.ats_min || undefined,
-      ats_max: f.ats_max || undefined,
-      exp_min: f.exp_min || undefined,
-      exp_max: f.exp_max || undefined,
-      city: f.city || undefined,
-      country: f.country || undefined,
-      applied_from: f.applied_from || undefined,
-      applied_to: f.applied_to || undefined,
-      skills: f.skills.length ? f.skills : undefined,
-      skills_mode: f.skills.length && f.skills_mode === 'all' ? f.skills_mode : undefined,
-      status: f.status.length ? f.status : undefined,
-    };
-  }
-
-  private parseFilters(params: Record<string, unknown>): ListFilters {
-    const str = (key: string): string => {
-      const value = params[key];
-      return typeof value === 'string' ? value : '';
-    };
-    const list = (key: string): string[] => {
-      const value = params[key];
-      if (Array.isArray(value)) return value.map(String);
-      return typeof value === 'string' && value !== '' ? [value] : [];
-    };
-    const skills = list('skills');
-    return {
-      q: str('q'),
-      min_score: str('min_score'),
-      max_score: str('max_score'),
-      ats: str('ats'),
-      ats_min: str('ats_min'),
-      ats_max: str('ats_max'),
-      exp_min: str('exp_min'),
-      exp_max: str('exp_max'),
-      city: str('city'),
-      country: str('country'),
-      applied_from: str('applied_from'),
-      applied_to: str('applied_to'),
-      skills,
-      skills_mode: str('skills_mode') === 'all' ? 'all' : 'any',
-      status: list('status'),
-    };
   }
 
   private readonly onVisibility = (): void => {

@@ -1,6 +1,6 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { SkillFacet } from '../../core/api/offers.service';
+import { ApplicationListParams, SkillFacet } from '../../core/api/offers.service';
 import {
   STATUSES,
   STATUS_BADGES,
@@ -73,6 +73,85 @@ export function activeFilterCount(f: ListFilters): number {
   if (f.status.length) count++;
   if (f.skills.length && f.skills_mode === 'all') count++;
   return count;
+}
+
+/** Read filter values from raw URL query params. */
+export function parseFilterParams(params: Record<string, unknown>): ListFilters {
+  const str = (key: string): string => {
+    const value = params[key];
+    return typeof value === 'string' ? value : '';
+  };
+  const list = (key: string): string[] => {
+    const value = params[key];
+    if (Array.isArray(value)) return value.map(String);
+    return typeof value === 'string' && value !== '' ? [value] : [];
+  };
+  const skills = list('skills');
+  return {
+    q: str('q'),
+    min_score: str('min_score'),
+    max_score: str('max_score'),
+    ats: str('ats'),
+    ats_min: str('ats_min'),
+    ats_max: str('ats_max'),
+    exp_min: str('exp_min'),
+    exp_max: str('exp_max'),
+    city: str('city'),
+    country: str('country'),
+    applied_from: str('applied_from'),
+    applied_to: str('applied_to'),
+    skills,
+    skills_mode: str('skills_mode') === 'all' ? 'all' : 'any',
+    status: list('status'),
+  };
+}
+
+/** Serialize filters to URL query params (undefined entries dropped). */
+export function filterQueryParams(f: ListFilters): Record<string, string | string[] | undefined> {
+  return {
+    q: f.q || undefined,
+    min_score: f.min_score || undefined,
+    max_score: f.max_score || undefined,
+    ats: f.ats || undefined,
+    ats_min: f.ats_min || undefined,
+    ats_max: f.ats_max || undefined,
+    exp_min: f.exp_min || undefined,
+    exp_max: f.exp_max || undefined,
+    city: f.city || undefined,
+    country: f.country || undefined,
+    applied_from: f.applied_from || undefined,
+    applied_to: f.applied_to || undefined,
+    skills: f.skills.length ? f.skills : undefined,
+    skills_mode: f.skills.length && f.skills_mode === 'all' ? f.skills_mode : undefined,
+    status: f.status.length ? f.status : undefined,
+  };
+}
+
+/** Map filters + sort + page to the API query (EF-807 combinable, AND logic). */
+export function toListParams(f: ListFilters, sort: string, page: number): ApplicationListParams {
+  const params: ApplicationListParams = { page, sort };
+  if (f.q) params.q = f.q;
+  if (f.ats) params.ats = f.ats;
+  if (f.city) params.city = f.city;
+  if (f.country) params.country = f.country;
+  if (f.applied_from) params.applied_from = f.applied_from;
+  if (f.applied_to) params.applied_to = f.applied_to;
+  for (const key of [
+    'min_score',
+    'max_score',
+    'ats_min',
+    'ats_max',
+    'exp_min',
+    'exp_max',
+  ] as const) {
+    if (f[key] !== '') params[key] = Number(f[key]);
+  }
+  if (f.skills.length) {
+    params.skills = f.skills;
+    params.skills_mode = f.skills_mode;
+  }
+  if (f.status.length) params.status = f.status;
+  return params;
 }
 
 @Component({

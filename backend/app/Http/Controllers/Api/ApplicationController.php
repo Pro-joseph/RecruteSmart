@@ -9,11 +9,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Applications\AddNoteRequest;
 use App\Http\Requests\Applications\BulkStatusRequest;
 use App\Http\Requests\Applications\ListApplicationsRequest;
+use App\Http\Requests\Applications\RejectApplicationRequest;
 use App\Http\Requests\Applications\UpdateStatusRequest;
 use App\Http\Resources\ApplicationDetailResource;
 use App\Http\Resources\ApplicationEventResource;
 use App\Http\Resources\ApplicationResource;
 use App\Jobs\AnalyzeApplicationJob;
+use App\Mail\CandidateRejectedMail;
 use App\Models\Application;
 use App\Models\Offer;
 use App\Models\Skill;
@@ -22,6 +24,7 @@ use App\Services\Applications\ApplicationUpdater;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -110,6 +113,31 @@ class ApplicationController extends Controller
         );
 
         return response()->json(['data' => ['rating' => $application->rating]]);
+    }
+
+    /** Refuse a candidate with an internal reason, optionally emailing them (EF-905). */
+    public function reject(RejectApplicationRequest $request, Application $application): JsonResponse
+    {
+        $data = $request->validated();
+        $user = $request->user();
+        assert($user !== null);
+
+        app(ApplicationUpdater::class)->reject(
+            $application,
+            (string) $data['reason'],
+            $user,
+        );
+
+        if (! empty($data['send_email'])) {
+            Mail::to($application->email)->queue(
+                new CandidateRejectedMail(
+                    $application,
+                    isset($data['message']) ? (string) $data['message'] : null,
+                ),
+            );
+        }
+
+        return response()->json(['data' => ['status' => $application->status->value]]);
     }
 
     public function bulkStatus(BulkStatusRequest $request, Offer $offer): JsonResponse

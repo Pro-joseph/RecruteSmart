@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/applications/{application}/reanalyze', [ApplicationController::class, 'reanalyze']);
     Route::patch('/applications/{application}/status', [ApplicationController::class, 'updateStatus']);
     Route::post('/applications/{application}/notes', [ApplicationController::class, 'addNote']);
+    Route::post('/applications/{application}/reject', [ApplicationController::class, 'reject']);
     Route::get('/applications/{application}', [ApplicationController::class, 'show']);
     Route::get('/applications/{application}/events', [ApplicationController::class, 'events']);
     Route::post('/applications/{application}/interviews', [InterviewController::class, 'store']);

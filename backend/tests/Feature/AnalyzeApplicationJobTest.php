@@ -152,6 +152,11 @@ it('creates a pending analysis and pushes the job on submit, then completes the 
 
     expect($application->fresh()->skills()->pluck('slug')->sort()->values()->all())
         ->toBe(['laravel', 'php']);
+
+    $event = $application->events()->sole();
+    expect($event->type->value)->toBe('analysis_completed')
+        ->and($event->payload['match_score'])->toBe($analysis->match_score)
+        ->and($event->user_id)->toBeNull();
 });
 
 it('marks unreadable CVs as failed without calling the LLM', function (): void {

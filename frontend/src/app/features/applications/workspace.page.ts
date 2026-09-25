@@ -19,6 +19,7 @@ import {
   toListParams,
 } from './list-filters.component';
 import { SavedViewsComponent } from './saved-views.component';
+import { TransferDialogComponent, TransferScope } from './transfer-dialog.component';
 import { STATUS_BADGES, STATUS_LABELS, VERDICT_BADGES, VERDICT_LABELS } from './application-labels';
 
 interface SortableColumn {
@@ -37,7 +38,13 @@ const SORTABLE: SortableColumn[] = [
 @Component({
   selector: 'app-workspace',
   standalone: true,
-  imports: [RouterLink, FormsModule, ListFiltersComponent, SavedViewsComponent],
+  imports: [
+    RouterLink,
+    FormsModule,
+    ListFiltersComponent,
+    SavedViewsComponent,
+    TransferDialogComponent,
+  ],
   template: `
     <p><a routerLink="/app/offers">← Offres</a></p>
     @if (offer(); as o) {
@@ -67,7 +74,30 @@ const SORTABLE: SortableColumn[] = [
         [query]="listQuery()"
         (applyView)="onApplyView($event)"
       />
-      <span class="muted">{{ total() }} candidature(s)</span>
+      <div class="toolbar-right">
+        <span class="muted">{{ total() }} candidature(s)</span>
+        @if (selectedIds().length) {
+          <span class="muted small">{{ selectedIds().length }} sélectionnée(s)</span>
+          <button type="button" class="btn btn-ghost" (click)="clearSelection()">Effacer</button>
+        }
+        <button
+          type="button"
+          class="btn"
+          (click)="openTransferAll()"
+          [disabled]="total() === 0"
+          title="Transférer toutes les candidatures correspondant aux filtres"
+        >
+          Tout transférer ({{ total() }})
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="openTransfer()"
+          [disabled]="transferableCount() === 0"
+        >
+          Transférer ({{ transferableCount() }})
+        </button>
+      </div>
     </div>
 
     <app-list-filters
@@ -88,6 +118,14 @@ const SORTABLE: SortableColumn[] = [
       <table>
         <thead>
           <tr>
+            <th class="pick">
+              <input
+                type="checkbox"
+                aria-label="Tout sélectionner"
+                [ngModel]="allPageSelected()"
+                (ngModelChange)="toggleSelectAllPage($event)"
+              />
+            </th>
             @for (col of sortable; track col.key) {
               <th
                 class="sortable"
@@ -109,12 +147,20 @@ const SORTABLE: SortableColumn[] = [
           @if (loading()) {
             @for (row of [1, 2, 3, 4, 5]; track row) {
               <tr class="skeleton-row">
-                <td colspan="8"><span class="skeleton"></span></td>
+                <td colspan="9"><span class="skeleton"></span></td>
               </tr>
             }
           } @else {
             @for (app of rows(); track app.id) {
               <tr>
+                <td class="pick">
+                  <input
+                    type="checkbox"
+                    [attr.aria-label]="'Sélectionner ' + app.full_name"
+                    [ngModel]="isSelected(app.id)"
+                    (ngModelChange)="toggleSelect(app.id, $event)"
+                  />
+                </td>
                 <td>
                   <a
                     [routerLink]="['/app/offers', offerId, 'applications', app.id]"
@@ -190,7 +236,7 @@ const SORTABLE: SortableColumn[] = [
               </tr>
             } @empty {
               <tr>
-                <td colspan="8">
+                <td colspan="9">
                   <div class="empty">
                     <h3>Aucune candidature</h3>
                     <p>
@@ -213,6 +259,13 @@ const SORTABLE: SortableColumn[] = [
         </tbody>
       </table>
     </div>
+
+    <app-transfer-dialog
+      [open]="transferOpen()"
+      [scope]="transferScope"
+      (sent)="onTransferSent()"
+      (close)="closeTransfer()"
+    />
 
     <div class="pager">
       <button type="button" class="btn" (click)="go(-1)" [disabled]="page() <= 1 || loading()">
@@ -264,6 +317,31 @@ const SORTABLE: SortableColumn[] = [
         margin: 0.75rem 0;
       }
 
+      .toolbar-right {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+      }
+
+      th.pick,
+      td.pick {
+        width: 34px;
+        text-align: center;
+        padding-right: 0;
+      }
+
+      th.pick input,
+      td.pick input {
+        display: inline-block;
+        width: auto;
+        margin-top: 0;
+        cursor: pointer;
+      }
+
+      tbody tr.selected {
+        background: var(--accent-soft);
+      }
+
       .empty .btn {
         margin-top: 0.75rem;
       }
@@ -284,6 +362,10 @@ export class WorkspacePage implements OnInit, OnDestroy {
   readonly sort = signal('-match_score');
   readonly sortKey = computed(() => this.sort().replace(/^-/, ''));
   readonly sortDir = computed<'asc' | 'desc'>(() => (this.sort().startsWith('-') ? 'desc' : 'asc'));
+
+  readonly selectedIds = signal<number[]>([]);
+  readonly transferOpen = signal(false);
+  transferScope: TransferScope | null = null;
 
   readonly sortable = SORTABLE;
   readonly VERDICT_LABELS = VERDICT_LABELS;
@@ -445,6 +527,78 @@ export class WorkspacePage implements OnInit, OnDestroy {
 
   hasFilters(): boolean {
     return activeFilterCount(this.filters()) > 0;
+  }
+
+  isSelected(id: number): boolean {
+    return this.selectedIds().includes(id);
+  }
+
+  toggleSelect(id: number, checked: boolean): void {
+    this.selectedIds.update((current) =>
+      checked
+        ? current.includes(id)
+          ? current
+          : [...current, id]
+        : current.filter((i) => i !== id),
+    );
+  }
+
+  allPageSelected(): boolean {
+    const ids = this.rows().map((row) => row.id);
+    return ids.length > 0 && ids.every((id) => this.selectedIds().includes(id));
+  }
+
+  toggleSelectAllPage(checked: boolean): void {
+    const ids = this.rows().map((row) => row.id);
+    this.selectedIds.update((current) => {
+      const kept = current.filter((id) => !ids.includes(id));
+      return checked ? [...kept, ...ids] : kept;
+    });
+  }
+
+  clearSelection(): void {
+    this.selectedIds.set([]);
+  }
+
+  /** Selected rows on this page plus, optionally, everything matching the filters. */
+  transferableCount(): number {
+    return this.selectedIds().length;
+  }
+
+  openTransfer(): void {
+    if (!this.selectedIds().length) return;
+    this.transferScope = {
+      applicationIds: this.selectedIds(),
+      selectAll: false,
+      offerId: this.offerId,
+      filters: this.filters(),
+      total: this.total(),
+    };
+    this.transferOpen.set(true);
+  }
+
+  /** EF-1002: transfer every candidate matching the current filters. */
+  openTransferAll(): void {
+    if (!this.total()) return;
+    this.transferScope = {
+      applicationIds: [],
+      selectAll: true,
+      offerId: this.offerId,
+      filters: this.filters(),
+      total: this.total(),
+    };
+    this.transferOpen.set(true);
+  }
+
+  closeTransfer(): void {
+    this.transferOpen.set(false);
+  }
+
+  onTransferSent(): void {
+    this.transferOpen.set(false);
+    this.clearSelection();
+    this.error.set(null);
+    void this.loadPage(this.page(), { silent: true });
   }
 
   analysisBadge(app: ApplicationRow): { label: string; cls: string } | null {

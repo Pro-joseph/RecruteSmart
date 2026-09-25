@@ -1,8 +1,18 @@
-<nav>
-  <a routerLink="/app/offers">Offers</a>
-  |
-  <a routerLink="/login">Login</a>
-</nav>
+@if (auth.user(); as u) {
+  <nav>
+    <a routerLink="/app/offers" routerLinkActive="active">Offres</a>
+    <a routerLink="/app/forwards" routerLinkActive="active">Transferts</a>
+    <a routerLink="/app/settings" routerLinkActive="active">Paramètres</a>
+    <span class="spacer"></span>
+    <span class="who">{{ u.name }}</span>
+    <button type="button" class="btn btn-ghost" (click)="logout()">Déconnexion</button>
+  </nav>
+} @else {
+  <nav>
+    <a routerLink="/login" routerLinkActive="active">Connexion</a>
+    <a routerLink="/register" routerLinkActive="active">Créer un compte</a>
+  </nav>
+}
 <main>
   <router-outlet />
 </main>

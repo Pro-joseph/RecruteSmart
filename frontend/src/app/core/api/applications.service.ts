@@ -65,6 +65,7 @@ export interface ApplicationFiche {
   offer: { id: number; title: string };
   answers: FicheAnswer[];
   files: FicheFile[];
+  interviews: Interview[];
   analysis: FicheAnalysis | null;
 }
 
@@ -74,6 +75,42 @@ export interface ApplicationEvent {
   payload: Record<string, unknown>;
   user: { id: number; name: string; email: string } | null;
   created_at: string;
+}
+
+export type InterviewType = 'phone' | 'video' | 'onsite';
+export type InterviewStatus = 'planned' | 'done' | 'canceled' | 'rescheduled';
+export type InterviewDecision = 'proceed' | 'reject';
+
+export interface Interview {
+  id: number;
+  application_id: number;
+  type: InterviewType;
+  starts_at: string;
+  duration_minutes: number;
+  location_or_link: string | null;
+  participants: string[];
+  status: InterviewStatus;
+  notes: string | null;
+  decision: InterviewDecision | null;
+  invitation_sent_at: string | null;
+  created_at: string;
+}
+
+export interface PlanInterviewPayload {
+  type: InterviewType;
+  starts_at: string;
+  duration_minutes: number;
+  location_or_link?: string;
+  participants?: string[];
+}
+
+export interface UpdateInterviewPayload {
+  status?: InterviewStatus;
+  starts_at?: string;
+  duration_minutes?: number;
+  location_or_link?: string;
+  notes?: string;
+  decision?: InterviewDecision;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -106,6 +143,28 @@ export class ApplicationsService {
         .post<{ data: { rating: number | null } }>(`/api/v1/applications/${id}/notes`, payload)
         .pipe(),
     ).then((r) => r.data.rating);
+  }
+
+  planInterview(id: number, payload: PlanInterviewPayload): Promise<Interview> {
+    return firstValueFrom(
+      this.http.post<{ data: Interview }>(`/api/v1/applications/${id}/interviews`, payload),
+    ).then((r) => r.data);
+  }
+
+  updateInterview(id: number, payload: UpdateInterviewPayload): Promise<Interview> {
+    return firstValueFrom(
+      this.http.patch<{ data: Interview }>(`/api/v1/interviews/${id}`, payload),
+    ).then((r) => r.data);
+  }
+
+  /** EF-905: internal reason, optional refusal email to the candidate. */
+  reject(
+    id: number,
+    payload: { reason: string; send_email?: boolean; message?: string },
+  ): Promise<string> {
+    return firstValueFrom(
+      this.http.post<{ data: { status: string } }>(`/api/v1/applications/${id}/reject`, payload),
+    ).then((r) => r.data.status);
   }
 
   /** Authenticated fetch of a private file (CV) as an object URL for preview. */

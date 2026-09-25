@@ -49,6 +49,17 @@ export const routes: Routes = [
       import('./features/applications/candidate-fiche.page').then((m) => m.CandidateFichePage),
     canActivate: [authGuard],
   },
+  {
+    path: 'app/forwards',
+    loadComponent: () =>
+      import('./features/applications/forwards.page').then((m) => m.ForwardsPage),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'app/settings',
+    loadComponent: () => import('./features/offers/settings.page').then((m) => m.SettingsPage),
+    canActivate: [authGuard],
+  },
   { path: '', redirectTo: '/app/offers', pathMatch: 'full' },
   { path: '**', redirectTo: '/app/offers' },
 ];

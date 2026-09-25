@@ -1,0 +1,13 @@
+.spacer {
+  flex: 1;
+}
+
+.who {
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+
+nav a.active {
+  color: var(--ink);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}

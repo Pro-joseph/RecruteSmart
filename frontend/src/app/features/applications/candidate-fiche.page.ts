@@ -9,6 +9,7 @@ import {
   ApplicationsService,
   FicheFile,
 } from '../../core/api/applications.service';
+import { ProcessPanelComponent } from './process-panel.component';
 import {
   EMPTY_FILTERS,
   ListFilters,
@@ -30,6 +31,7 @@ const EVENT_LABELS: Record<string, string> = {
   status_changed: 'Changement de statut',
   note_added: 'Note ajoutée',
   interview_planned: 'Entretien planifié',
+  interview_updated: 'Entretien mis à jour',
   forwarded: 'Transfert par email',
   analysis_completed: 'Analyse terminée',
   forward_created: 'Transfert créé',
@@ -39,6 +41,7 @@ const EVENT_BADGES: Record<string, string> = {
   status_changed: 'badge-blue',
   note_added: 'badge-amber',
   interview_planned: 'badge-teal',
+  interview_updated: 'badge-teal',
   forwarded: 'badge-indigo',
   analysis_completed: 'badge-green',
   forward_created: 'badge-indigo',
@@ -47,7 +50,7 @@ const EVENT_BADGES: Record<string, string> = {
 @Component({
   selector: 'app-candidate-fiche',
   standalone: true,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, ProcessPanelComponent],
   template: `
     <p>
       <a [routerLink]="['/app/offers', offerId]" [queryParams]="listQuery()">
@@ -284,6 +287,8 @@ const EVENT_BADGES: Record<string, string> = {
               <iframe class="cv-frame" [src]="url" title="Aperçu du CV"></iframe>
             }
           </section>
+
+          <app-process-panel [appId]="appId" (changed)="reloadAfterProcess()" />
         </div>
 
         <div class="col-side">
@@ -676,7 +681,6 @@ export class CandidateFichePage implements OnInit {
   readonly VERDICT_BADGES = VERDICT_BADGES;
   readonly EVENT_LABELS = EVENT_LABELS;
   readonly EVENT_BADGES = EVENT_BADGES;
-
   noteDraft = '';
 
   offerId = 0;
@@ -710,12 +714,18 @@ export class CandidateFichePage implements OnInit {
 
   async load(): Promise<void> {
     try {
-      this.app.set(await this.api.get(this.appId));
+      const fiche = await this.api.get(this.appId);
+      this.app.set(fiche);
       this.events.set(await this.api.events(this.appId));
       this.error.set(null);
     } catch {
       this.error.set('Impossible de charger la fiche du candidat.');
     }
+  }
+
+  reloadAfterProcess(): void {
+    void this.load();
+    void this.loadNeighbours();
   }
 
   async loadNeighbours(): Promise<void> {
@@ -878,12 +888,38 @@ export class CandidateFichePage implements OnInit {
       if (payload['ats_score'] != null) parts.push(`ATS ${payload['ats_score']}`);
       return parts.join(' · ');
     }
+    if (event.type === 'interview_planned' || event.type === 'interview_updated') {
+      const parts: string[] = [];
+      const type = typeof payload['type'] === 'string' ? payload['type'] : '';
+      if (type) parts.push(this.interviewTypeLabel(type));
+      const startsAt = payload['starts_at'];
+      if (typeof startsAt === 'string') parts.push(this.formatDateTime(startsAt));
+      const status = typeof payload['status'] === 'string' ? payload['status'] : '';
+      if (status) parts.push(`statut : ${status}`);
+      const decision = typeof payload['decision'] === 'string' ? payload['decision'] : '';
+      if (decision) parts.push(`décision : ${decision}`);
+      return parts.join(' · ');
+    }
     if (event.type === 'note_added') {
       const note = typeof payload['note'] === 'string' ? payload['note'] : '';
       const rating = payload['rating'];
       return [rating != null ? `★ ${String(rating)}/5` : '', note].filter(Boolean).join(' — ');
     }
     return '';
+  }
+
+  interviewTypeLabel(type: string): string {
+    return { phone: 'Téléphone', video: 'Visio', onsite: 'Présentiel' }[type] ?? type;
+  }
+
+  formatDateTime(iso: string): string {
+    return new Date(iso).toLocaleString('fr-FR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
 
   formatDate(iso: string): string {

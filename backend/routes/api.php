@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\EmailTemplateController;
@@ -60,6 +61,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/settings/email-templates', [EmailTemplateController::class, 'index']);
     Route::put('/settings/email-templates/{key}', [EmailTemplateController::class, 'update']);
     Route::delete('/settings/email-templates/{key}', [EmailTemplateController::class, 'reset']);
+
+    // EF-1205: admin supervision of users and AI usage.
+    Route::prefix('admin')->middleware('admin')->group(function (): void {
+        Route::get('/users', [AdminUserController::class, 'users']);
+        Route::get('/usage', [AdminUserController::class, 'usage']);
+    });
 });
 
 Route::get('/public/offers/{token}', [PublicOfferController::class, 'show'])

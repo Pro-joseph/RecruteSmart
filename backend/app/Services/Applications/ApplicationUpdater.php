@@ -15,27 +15,47 @@ class ApplicationUpdater
     /**
      * Applies a status change (EF-703, any transition allowed) and records
      * a status_changed event. Returns false when the status was unchanged.
+     *
+     * @param  array<string, mixed>  $extraPayload  merged into the history payload
      */
-    public function changeStatus(Application $application, ApplicationStatus $to, User $user): bool
-    {
+    public function changeStatus(
+        Application $application,
+        ApplicationStatus $to,
+        User $user,
+        array $extraPayload = [],
+    ): bool {
         $from = $application->status;
 
         if ($from === $to) {
             return false;
         }
 
-        DB::transaction(function () use ($application, $from, $to, $user): void {
+        DB::transaction(function () use ($application, $extraPayload, $from, $to, $user): void {
             $application->status = $to;
             $application->save();
 
             $application->events()->create([
                 'user_id' => $user->id,
                 'type' => ApplicationEventType::StatusChanged,
-                'payload' => ['from' => $from->value, 'to' => $to->value],
+                'payload' => array_merge(
+                    ['from' => $from->value, 'to' => $to->value],
+                    $extraPayload,
+                ),
             ]);
         });
 
         return true;
+    }
+
+    /**
+     * Refuses a candidate with an internal reason (EF-905); the optional
+     * candidate-facing email is queued by the caller.
+     */
+    public function reject(Application $application, string $reason, User $user): bool
+    {
+        return $this->changeStatus($application, ApplicationStatus::Rejected, $user, [
+            'reason' => $reason,
+        ]);
     }
 
     /**

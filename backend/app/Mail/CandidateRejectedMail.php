@@ -13,13 +13,17 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ApplicationReceivedMail extends Mailable
+/** Refusal email sent on demand when the recruiter ticks « envoyer un email » (EF-905). */
+class CandidateRejectedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     private ?array $copy = null;
 
-    public function __construct(public readonly Application $application) {}
+    public function __construct(
+        public readonly Application $application,
+        public readonly ?string $message = null,
+    ) {}
 
     public function envelope(): Envelope
     {
@@ -38,14 +42,20 @@ class ApplicationReceivedMail extends Mailable
     private function copy(): array
     {
         if ($this->copy === null) {
-            $this->copy = app(EmailTemplateRenderer::class)->render(
+            $render = app(EmailTemplateRenderer::class)->render(
                 $this->application->offer->user,
-                EmailTemplate::CONFIRMATION,
+                EmailTemplate::REFUSAL,
                 [
                     'candidate_name' => $this->application->full_name,
                     'offer_title' => $this->application->offer->title,
                 ],
             );
+
+            if ($this->message !== null && $this->message !== '') {
+                $render['body'] .= "\n\n".$this->message;
+            }
+
+            $this->copy = $render;
         }
 
         return $this->copy;

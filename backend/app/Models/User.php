@@ -25,6 +25,18 @@ class User extends Authenticatable
         return $this->hasMany(Offer::class);
     }
 
+    /** @return HasMany<Forward, $this> */
+    public function forwards(): HasMany
+    {
+        return $this->hasMany(Forward::class);
+    }
+
+    /** @return HasMany<EmailTemplate, $this> */
+    public function emailTemplates(): HasMany
+    {
+        return $this->hasMany(EmailTemplate::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

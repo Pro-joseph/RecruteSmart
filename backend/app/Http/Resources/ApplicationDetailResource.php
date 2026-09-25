@@ -38,6 +38,7 @@ class ApplicationDetailResource extends JsonResource
             ],
             'answers' => $this->answers($application),
             'files' => $this->files($application),
+            'interviews' => InterviewResource::collection($application->interviews),
             'analysis' => $analysis === null ? null : [
                 'status' => $analysis->status->value,
                 'match_score' => $analysis->match_score,

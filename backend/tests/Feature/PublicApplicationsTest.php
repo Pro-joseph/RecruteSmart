@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Mail\ApplicationReceivedMail;
+use App\Mail\RecruiterNewApplicationMail;
 use App\Models\Offer;
 use App\Models\User;
 use App\Services\Offers\OfferService;
@@ -82,6 +83,21 @@ it('stores a valid application with files and sends confirmation', function (): 
     expect($application->consent_at)->not->toBeNull();
 
     Mail::assertSent(ApplicationReceivedMail::class);
+});
+
+it('notifies the recruiter of every new application (EF-1101)', function (): void {
+    $offer = publishedOffer();
+
+    $this->postJson("/api/v1/public/offers/{$offer->public_token}/applications", submitPayload())
+        ->assertCreated();
+
+    Mail::assertQueued(RecruiterNewApplicationMail::class, function (RecruiterNewApplicationMail $mail) use ($offer): bool {
+        return $mail->hasTo($offer->user->email)
+            && str_contains($mail->envelope()->subject, $offer->title);
+    });
+
+    $rendered = (new RecruiterNewApplicationMail($offer->applications()->firstOrFail()))->render();
+    expect($rendered)->toContain('nouvelle candidature')->toContain('Jane Doe');
 });
 
 it('rejects invalid files, missing consent and bad fields', function (): void {

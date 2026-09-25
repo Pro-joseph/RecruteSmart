@@ -43,6 +43,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/applications/{application}', [ApplicationController::class, 'show']);
     Route::get('/applications/{application}/events', [ApplicationController::class, 'events']);
     Route::post('/applications/{application}/interviews', [InterviewController::class, 'store']);
+    Route::patch('/interviews/{interview}', [InterviewController::class, 'update']);
     Route::get('/applications/{application}/files/{key}', [ApplicationController::class, 'download'])
         ->where('key', '[a-z0-9_]+');
 });

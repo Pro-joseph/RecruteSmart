@@ -69,7 +69,7 @@ class ApplicationController extends Controller
 
     public function show(Application $application): JsonResponse
     {
-        $application->load(['offer.formFields', 'analysis', 'skills']);
+        $application->load(['offer.formFields', 'analysis', 'skills', 'interviews']);
         Gate::authorize('view', $application);
 
         return (new ApplicationDetailResource($application))->response();

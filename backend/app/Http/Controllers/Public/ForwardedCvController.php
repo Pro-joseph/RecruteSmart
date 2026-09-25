@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
+use App\Enums\AuditAction;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -33,6 +36,13 @@ class ForwardedCvController extends Controller
 
         // Audit trail (spec §4.2 / ENF-11) — no personal data beyond the id.
         Log::info('forward_cv_downloaded', ['application_id' => $model->id]);
+        app(AuditLogger::class)->log(
+            null,
+            AuditAction::CvDownloaded,
+            $model,
+            ['via' => 'signed_link'],
+            Request::ip(),
+        );
 
         return Storage::disk('private')->download(
             $model->cv_path,

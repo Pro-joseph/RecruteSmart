@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\AuditAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Offers\StoreOfferRequest;
 use App\Http\Requests\Offers\UpdateOfferRequest;
 use App\Http\Resources\OfferResource;
 use App\Jobs\AnalyzeApplicationJob;
 use App\Models\Offer;
+use App\Services\Audit\AuditLogger;
 use App\Services\Offers\OfferService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -108,6 +110,14 @@ class OfferController extends Controller
     {
         Gate::authorize('regenerateLink', $offer);
         $updated = $this->offers->regenerateLink($offer);
+
+        app(AuditLogger::class)->log(
+            $request->user(),
+            AuditAction::LinkRegenerated,
+            $offer,
+            null,
+            $request->ip(),
+        );
         $updated->load('formFields');
 
         return (new OfferResource($updated))->response($request);

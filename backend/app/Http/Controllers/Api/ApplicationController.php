@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Enums\ApplicationStatus;
+use App\Enums\AuditAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Applications\AddNoteRequest;
 use App\Http\Requests\Applications\BulkStatusRequest;
@@ -21,6 +22,7 @@ use App\Models\Offer;
 use App\Models\Skill;
 use App\Services\Applications\ApplicationFilter;
 use App\Services\Applications\ApplicationUpdater;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -176,6 +178,14 @@ class ApplicationController extends Controller
         if (! Storage::disk('private')->exists($path)) {
             throw new NotFoundHttpException('Fichier introuvable.');
         }
+
+        app(AuditLogger::class)->log(
+            $request->user(),
+            AuditAction::CvDownloaded,
+            $application,
+            ['key' => $key],
+            $request->ip(),
+        );
 
         return Storage::disk('private')->download($path, $name);
     }

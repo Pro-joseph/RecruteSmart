@@ -20,6 +20,7 @@ use App\Mail\CandidateRejectedMail;
 use App\Models\Application;
 use App\Models\Offer;
 use App\Models\Skill;
+use App\Services\Applications\ApplicationDeleter;
 use App\Services\Applications\ApplicationFilter;
 use App\Services\Applications\ApplicationUpdater;
 use App\Services\Audit\AuditLogger;
@@ -156,6 +157,17 @@ class ApplicationController extends Controller
         }
 
         return response()->json(['data' => ['updated' => $updated]]);
+    }
+
+    /** Definitive deletion: rows, private files, forward snapshot (EF-1201, RG-13). */
+    public function destroy(Request $request, Application $application): JsonResponse
+    {
+        $application->load('offer');
+        Gate::authorize('delete', $application);
+
+        app(ApplicationDeleter::class)->delete($application, $request->user(), $request->ip());
+
+        return response()->json(null, 204);
     }
 
     public function download(Request $request, Application $application, string $key): StreamedResponse

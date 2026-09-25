@@ -70,7 +70,7 @@ function extractorTestDocx(string $text): string
 it('extracts text from a PDF', function (): void {
     $path = extractorTestPdf('Jane Doe - Developpeuse PHP Laravel');
 
-    $text = (new CvTextExtractor)->extract($path, 'application/pdf');
+    $text = (new CvTextExtractor)->extract($path, 'application/pdf')->text;
 
     expect($text)->toContain('Jane Doe')->toContain('Laravel');
 
@@ -80,7 +80,7 @@ it('extracts text from a PDF', function (): void {
 it('extracts text from a DOCX', function (): void {
     $path = extractorTestDocx('Jean Dupont - Ingenieur backend');
 
-    $text = (new CvTextExtractor)->extract($path, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    $text = (new CvTextExtractor)->extract($path, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')->text;
 
     expect($text)->toContain('Jean Dupont')->toContain('backend');
 
@@ -91,14 +91,14 @@ it('throws UnreadableCvException on a corrupted PDF', function (): void {
     $path = tempnam(sys_get_temp_dir(), 'cvt').'.pdf';
     file_put_contents($path, 'this is not a pdf at all');
 
-    expect(fn (): string => (new CvTextExtractor)->extract($path, 'application/pdf'))
+    expect(fn () => (new CvTextExtractor)->extract($path, 'application/pdf'))
         ->toThrow(UnreadableCvException::class);
 
     @unlink($path);
 });
 
 it('throws UnreadableCvException when the file is missing', function (): void {
-    expect(fn (): string => (new CvTextExtractor)->extract('/nonexistent/cv.pdf', 'application/pdf'))
+    expect(fn () => (new CvTextExtractor)->extract('/nonexistent/cv.pdf', 'application/pdf'))
         ->toThrow(UnreadableCvException::class);
 });
 
@@ -106,7 +106,7 @@ it('throws UnreadableCvException on unsupported mime types', function (): void {
     $path = tempnam(sys_get_temp_dir(), 'cvt').'.png';
     file_put_contents($path, 'binary');
 
-    expect(fn (): string => (new CvTextExtractor)->extract($path, 'image/png'))
+    expect(fn () => (new CvTextExtractor)->extract($path, 'image/png'))
         ->toThrow(UnreadableCvException::class);
 
     @unlink($path);
@@ -115,7 +115,7 @@ it('throws UnreadableCvException on unsupported mime types', function (): void {
 it('returns trimmed text', function (): void {
     $path = extractorTestPdf('   Margot Leclerc   ');
 
-    expect((new CvTextExtractor)->extract($path, 'application/pdf'))->toBe('Margot Leclerc');
+    expect((new CvTextExtractor)->extract($path, 'application/pdf')->text)->toBe('Margot Leclerc');
 
     @unlink($path);
 });

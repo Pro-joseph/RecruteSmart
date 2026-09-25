@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\InterviewController;
 use App\Http\Controllers\Api\OfferController;
 use App\Http\Controllers\Api\OfferFormFieldController;
 use App\Http\Controllers\Public\PublicApplicationController;
@@ -41,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/applications/{application}/notes', [ApplicationController::class, 'addNote']);
     Route::get('/applications/{application}', [ApplicationController::class, 'show']);
     Route::get('/applications/{application}/events', [ApplicationController::class, 'events']);
+    Route::post('/applications/{application}/interviews', [InterviewController::class, 'store']);
     Route::get('/applications/{application}/files/{key}', [ApplicationController::class, 'download'])
         ->where('key', '[a-z0-9_]+');
 });

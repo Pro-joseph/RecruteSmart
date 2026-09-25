@@ -38,6 +38,7 @@ class Interview extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'created_by',
         'type',
         'starts_at',
         'duration_minutes',

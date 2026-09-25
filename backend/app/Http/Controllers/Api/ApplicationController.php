@@ -16,6 +16,7 @@ use App\Http\Resources\ApplicationResource;
 use App\Jobs\AnalyzeApplicationJob;
 use App\Models\Application;
 use App\Models\Offer;
+use App\Models\Skill;
 use App\Services\Applications\ApplicationFilter;
 use App\Services\Applications\ApplicationUpdater;
 use Illuminate\Http\JsonResponse;
@@ -35,6 +36,25 @@ class ApplicationController extends Controller
             ->paginate(min($request->integer('per_page', 25), 100));
 
         return ApplicationResource::collection($applications)->response($request);
+    }
+
+    /**
+     * Distinct skills held by this offer's candidates, with their application count (EF-803).
+     */
+    public function skills(Offer $offer): JsonResponse
+    {
+        Gate::authorize('view', $offer);
+
+        $skills = Skill::query()
+            ->join('application_skill', 'skills.id', '=', 'application_skill.skill_id')
+            ->whereIn('application_skill.application_id', $offer->applications()->pluck('id'))
+            ->groupBy('skills.id', 'skills.name', 'skills.slug')
+            ->select('skills.id', 'skills.name', 'skills.slug')
+            ->selectRaw('count(*) as applications_count')
+            ->orderBy('skills.name')
+            ->get();
+
+        return response()->json(['data' => $skills]);
     }
 
     public function reanalyze(Application $application): JsonResponse

@@ -17,6 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
+        // TLS terminates in front (nginx/ingress): honour X-Forwarded-Proto so HSTS/$request->secure() work.
+        $middleware->trustProxies(at: '*');
         $middleware->append(SecurityHeaders::class);
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,

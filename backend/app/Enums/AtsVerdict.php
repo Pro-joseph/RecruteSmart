@@ -6,7 +6,7 @@ namespace App\Enums;
 
 enum AtsVerdict: string
 {
-    case Conforming = 'conforming';
-    case NeedsImprovement = 'needs_improvement';
+    case Compliant = 'compliant';
+    case Improvable = 'improvable';
     case NonCompliant = 'non_compliant';
 }

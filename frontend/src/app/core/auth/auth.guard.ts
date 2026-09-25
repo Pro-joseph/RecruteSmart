@@ -18,3 +18,12 @@ export const guestGuard: CanActivateFn = async () => {
   const me = await auth.me();
   return me ? router.createUrlTree(['/app/offers']) : true;
 };
+
+/** Admin area (EF-1205): requires the session and the is_admin flag. */
+export const adminGuard: CanActivateFn = async () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  const me = auth.user() ?? (await auth.me());
+  if (!me) return router.createUrlTree(['/login']);
+  return me.is_admin ? true : router.createUrlTree(['/app/offers']);
+};

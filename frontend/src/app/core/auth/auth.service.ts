@@ -8,6 +8,7 @@ export interface AuthUser {
   email: string;
   company_name?: string | null;
   timezone?: string;
+  is_admin?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

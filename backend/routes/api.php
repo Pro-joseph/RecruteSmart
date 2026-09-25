@@ -34,7 +34,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/offers/{offer}/form-fields', [OfferFormFieldController::class, 'index']);
     Route::put('/offers/{offer}/form-fields', [OfferFormFieldController::class, 'update']);
     Route::get('/offers/{offer}/applications', [ApplicationController::class, 'index']);
+    Route::get('/offers/{offer}/skills', [ApplicationController::class, 'skills']);
+    Route::post('/offers/{offer}/applications/bulk-status', [ApplicationController::class, 'bulkStatus']);
     Route::post('/applications/{application}/reanalyze', [ApplicationController::class, 'reanalyze']);
+    Route::patch('/applications/{application}/status', [ApplicationController::class, 'updateStatus']);
+    Route::post('/applications/{application}/notes', [ApplicationController::class, 'addNote']);
+    Route::get('/applications/{application}', [ApplicationController::class, 'show']);
+    Route::get('/applications/{application}/events', [ApplicationController::class, 'events']);
     Route::get('/applications/{application}/files/{key}', [ApplicationController::class, 'download'])
         ->where('key', '[a-z0-9_]+');
 });

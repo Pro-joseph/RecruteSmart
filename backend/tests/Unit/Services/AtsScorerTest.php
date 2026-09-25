@@ -46,7 +46,7 @@ it('scores a fully compliant CV at 100', function (): void {
     $score = (new AtsScorer)->score($context);
 
     expect($score['score'])->toBe(100)
-        ->and($score['verdict'])->toBe(AtsVerdict::Conforming);
+        ->and($score['verdict'])->toBe(AtsVerdict::Compliant);
 });
 
 it('fails ATS-01 on insufficient text', function (): void {
@@ -124,10 +124,15 @@ it('matches skill aliases without substrings false positives', function (): void
 });
 
 it('derives verdicts from the spec thresholds', function (): void {
-    expect(AtsScorer::verdictFor(100))->toBe(AtsVerdict::Conforming)
-        ->and(AtsScorer::verdictFor(75))->toBe(AtsVerdict::Conforming)
-        ->and(AtsScorer::verdictFor(74))->toBe(AtsVerdict::NeedsImprovement)
-        ->and(AtsScorer::verdictFor(50))->toBe(AtsVerdict::NeedsImprovement)
+    expect(AtsScorer::verdictFor(100))->toBe(AtsVerdict::Compliant)
+        ->and(AtsScorer::verdictFor(75))->toBe(AtsVerdict::Compliant)
+        ->and(AtsScorer::verdictFor(74))->toBe(AtsVerdict::Improvable)
+        ->and(AtsScorer::verdictFor(50))->toBe(AtsVerdict::Improvable)
         ->and(AtsScorer::verdictFor(49))->toBe(AtsVerdict::NonCompliant)
         ->and(AtsScorer::verdictFor(0))->toBe(AtsVerdict::NonCompliant);
+
+    // Spec §4.2 enum wire values.
+    expect(AtsVerdict::Compliant->value)->toBe('compliant')
+        ->and(AtsVerdict::Improvable->value)->toBe('improvable')
+        ->and(AtsVerdict::NonCompliant->value)->toBe('non_compliant');
 });

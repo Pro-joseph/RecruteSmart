@@ -52,8 +52,8 @@ class AtsScorer
     public static function verdictFor(int $score): AtsVerdict
     {
         return match (true) {
-            $score >= 75 => AtsVerdict::Conforming,
-            $score >= 50 => AtsVerdict::NeedsImprovement,
+            $score >= 75 => AtsVerdict::Compliant,
+            $score >= 50 => AtsVerdict::Improvable,
             default => AtsVerdict::NonCompliant,
         };
     }

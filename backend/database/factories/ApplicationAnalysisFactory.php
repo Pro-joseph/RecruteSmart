@@ -28,7 +28,7 @@ class ApplicationAnalysisFactory extends Factory
         return $this->state(fn (): array => [
             'status' => 'completed',
             'ats_score' => 80,
-            'ats_verdict' => 'conforming',
+            'ats_verdict' => 'compliant',
             'ats_checks' => [],
             'match_score' => 75,
             'match_breakdown' => [],

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Enums\AnalysisStatus;
+use App\Enums\ApplicationEventType;
 use App\Models\Application;
 use App\Models\ApplicationAnalysis;
 use App\Models\Offer;
@@ -228,6 +229,14 @@ class AnalyzeApplicationJob implements ShouldBeUnique, ShouldQueue
             ])->save();
 
             $application->skills()->sync($skillIds);
+
+            $application->events()->create([
+                'type' => ApplicationEventType::AnalysisCompleted,
+                'payload' => [
+                    'match_score' => $calculated['match_score'],
+                    'ats_score' => $ats['score'],
+                ],
+            ]);
         });
 
         // input_hash is stored after the payload (computed from prompt/criteria/text).

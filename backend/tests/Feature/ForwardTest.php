@@ -153,3 +153,38 @@ it('uses signed 7-day links instead of attachments above the size limit (EF-1005
 
     expect($forward->fresh()->delivery->value)->toBe('links');
 });
+
+it('re-queues a failed transfer but refuses one already sent (EF-1008)', function (): void {
+    Queue::fake();
+
+    $forward = Forward::factory()->create([
+        'user_id' => $this->owner->id,
+        'status' => ForwardStatus::Failed,
+        'error_message' => 'smtp down',
+    ]);
+    $forward->applications()->attach($this->applications[0]->id, [
+        'candidate_name_snapshot' => $this->applications[0]->full_name,
+    ]);
+
+    $this->actingAs(User::factory()->create())
+        ->postJson("/api/v1/forwards/{$forward->id}/retry")
+        ->assertForbidden();
+
+    $this->actingAs($this->owner)
+        ->postJson("/api/v1/forwards/{$forward->id}/retry")
+        ->assertOk();
+
+    expect($forward->fresh()->status)->toBe(ForwardStatus::Queued)
+        ->and($forward->fresh()->error_message)->toBeNull();
+
+    Queue::assertPushed(SendForwardJob::class, fn (SendForwardJob $job): bool => $job->forwardId === $forward->id);
+
+    $sent = Forward::factory()->create([
+        'user_id' => $this->owner->id,
+        'status' => ForwardStatus::Sent,
+    ]);
+
+    $this->actingAs($this->owner)
+        ->postJson("/api/v1/forwards/{$sent->id}/retry")
+        ->assertStatus(422);
+});

@@ -53,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/forwards', [ForwardController::class, 'store']);
     Route::get('/forwards', [ForwardController::class, 'index']);
     Route::get('/forwards/{forward}', [ForwardController::class, 'show']);
+    Route::post('/forwards/{forward}/retry', [ForwardController::class, 'retry']);
     Route::get('/settings/email-templates', [EmailTemplateController::class, 'index']);
     Route::put('/settings/email-templates/{key}', [EmailTemplateController::class, 'update']);
     Route::delete('/settings/email-templates/{key}', [EmailTemplateController::class, 'reset']);

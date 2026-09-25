@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\ForwardStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Forwards\CreateForwardRequest;
 use App\Http\Resources\ForwardResource;
+use App\Jobs\SendForwardJob;
 use App\Models\Forward;
 use App\Services\Forwards\ForwardService;
 use Illuminate\Http\JsonResponse;
@@ -46,5 +48,20 @@ class ForwardController extends Controller
         }
 
         return (new ForwardResource($forward->load('snapshots')))->response();
+    }
+
+    /** Re-queue a failed or undelivered transfer (EF-1008). */
+    public function retry(Request $request, Forward $forward): JsonResponse
+    {
+        if ($forward->user_id !== $request->user()?->id) {
+            abort(403);
+        }
+
+        abort_unless($forward->status !== ForwardStatus::Sent, 422, 'Ce transfert a déjà été envoyé.');
+
+        $forward->update(['status' => ForwardStatus::Queued, 'error_message' => null]);
+        SendForwardJob::dispatch($forward->id);
+
+        return response()->json(['message' => 'Transfert remis en file d\'envoi.']);
     }
 }

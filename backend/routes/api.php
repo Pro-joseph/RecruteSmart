@@ -37,6 +37,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/offers/{offer}/reanalyze', [OfferController::class, 'reanalyze']);
     Route::get('/offers/{offer}/form-fields', [OfferFormFieldController::class, 'index']);
     Route::put('/offers/{offer}/form-fields', [OfferFormFieldController::class, 'update']);
+    Route::get('/offers/{offer}/stats', [OfferController::class, 'stats']);
     Route::get('/offers/{offer}/applications', [ApplicationController::class, 'index']);
     Route::get('/offers/{offer}/skills', [ApplicationController::class, 'skills']);
     Route::post('/offers/{offer}/applications/bulk-status', [ApplicationController::class, 'bulkStatus']);
@@ -45,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/applications/{application}/notes', [ApplicationController::class, 'addNote']);
     Route::post('/applications/{application}/reject', [ApplicationController::class, 'reject']);
     Route::get('/applications/{application}', [ApplicationController::class, 'show']);
+    Route::get('/applications/{application}/export', [ApplicationController::class, 'export']);
     Route::delete('/applications/{application}', [ApplicationController::class, 'destroy']);
     Route::get('/applications/{application}/events', [ApplicationController::class, 'events']);
     Route::post('/applications/{application}/interviews', [InterviewController::class, 'store']);

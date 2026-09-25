@@ -21,6 +21,7 @@ use App\Models\Application;
 use App\Models\Offer;
 use App\Models\Skill;
 use App\Services\Applications\ApplicationDeleter;
+use App\Services\Applications\ApplicationExporter;
 use App\Services\Applications\ApplicationFilter;
 use App\Services\Applications\ApplicationUpdater;
 use App\Services\Audit\AuditLogger;
@@ -29,6 +30,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -168,6 +170,23 @@ class ApplicationController extends Controller
         app(ApplicationDeleter::class)->delete($application, $request->user(), $request->ip());
 
         return response()->json(null, 204);
+    }
+
+    /** One-click candidate export: donnees.json + CV + attachments as a ZIP (EF-1203, RG-14). */
+    public function export(Request $request, Application $application): BinaryFileResponse
+    {
+        $application->load('offer');
+        Gate::authorize('view', $application);
+
+        $path = app(ApplicationExporter::class)->export(
+            $application,
+            $request->user(),
+            $request->ip(),
+        );
+
+        return response()->download($path, sprintf('candidat-%d-%s.zip', $application->id, now()->format('Ymd-His')), [
+            'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(true);
     }
 
     public function download(Request $request, Application $application, string $key): StreamedResponse

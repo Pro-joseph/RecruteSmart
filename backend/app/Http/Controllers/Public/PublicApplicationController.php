@@ -39,6 +39,7 @@ class PublicApplicationController extends Controller
 
         // Confirmation email must never break the submission (ENF-03).
         try {
+            $application->setRelation('offer', $offer);
             Mail::to($application->email)->send(new ApplicationReceivedMail($application));
         } catch (\Throwable $e) {
             Log::warning('Confirmation email failed', ['application_id' => $application->id, 'error' => $e->getMessage()]);

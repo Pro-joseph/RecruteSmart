@@ -112,6 +112,7 @@ class OfferService
                 'closed_at' => null,
             ]);
 
+            $offer->loadMissing('formFields');
             foreach ($offer->formFields as $field) {
                 $copy->formFields()->create($field->only([
                     'key', 'label', 'type', 'is_required', 'is_locked',

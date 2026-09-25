@@ -44,6 +44,7 @@ class ApplicationController extends Controller
 
     public function download(Request $request, Application $application, string $key): StreamedResponse
     {
+        $application->load('offer');
         Gate::authorize('view', $application);
 
         if ($key === 'cv') {

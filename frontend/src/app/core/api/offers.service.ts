@@ -25,12 +25,55 @@ export interface CatalogField {
   required: boolean;
 }
 
+export interface ApplicationAnalysisSummary {
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  match_score: number | null;
+  ats_score: number | null;
+  ats_verdict: 'compliant' | 'improvable' | 'non_compliant' | null;
+  years_experience: number | null;
+  city: string | null;
+  skills: string[];
+  is_stale: boolean;
+  error_code: string | null;
+  error_message: string | null;
+}
+
 export interface ApplicationRow {
   id: number;
   full_name: string;
   email: string;
   status: string;
+  rating: number | null;
   created_at: string;
+  analysis: ApplicationAnalysisSummary | null;
+}
+
+export interface ApplicationListParams {
+  page?: number;
+  per_page?: number;
+  sort?: string;
+  q?: string;
+  min_score?: number;
+  max_score?: number;
+  ats?: string;
+  ats_min?: number;
+  ats_max?: number;
+  skills?: string[];
+  skills_mode?: 'any' | 'all';
+  exp_min?: number;
+  exp_max?: number;
+  city?: string;
+  country?: string;
+  status?: string[];
+  applied_from?: string;
+  applied_to?: string;
+}
+
+export interface SkillFacet {
+  id: number;
+  name: string;
+  slug: string;
+  applications_count: number;
 }
 
 export interface Paginated<T> {
@@ -150,12 +193,31 @@ export class OffersService {
     ).then((r) => r.data);
   }
 
-  listApplications(offerId: number, page = 1): Promise<Paginated<ApplicationRow>> {
-    const params = new HttpParams().set('page', page);
+  listApplications(
+    offerId: number,
+    params: ApplicationListParams = {},
+  ): Promise<Paginated<ApplicationRow>> {
+    let httpParams = new HttpParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value === undefined || value === null || value === '') continue;
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          httpParams = httpParams.append(`${key}[]`, String(item));
+        }
+      } else {
+        httpParams = httpParams.set(key, String(value));
+      }
+    }
     return firstValueFrom(
       this.http.get<Paginated<ApplicationRow>>(`/api/v1/offers/${offerId}/applications`, {
-        params,
+        params: httpParams,
       }),
     );
+  }
+
+  applicationSkills(offerId: number): Promise<SkillFacet[]> {
+    return firstValueFrom(
+      this.http.get<{ data: SkillFacet[] }>(`/api/v1/offers/${offerId}/skills`),
+    ).then((r) => r.data);
   }
 }

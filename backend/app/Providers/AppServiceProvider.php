@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\Analysis\CvAnalyzer;
+use App\Services\Analysis\LlmCvAnalyzer;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\RateLimiter;
@@ -14,7 +16,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(CvAnalyzer::class, LlmCvAnalyzer::class);
     }
 
     /**

@@ -93,7 +93,8 @@ it('returns null match_score when the offer declares no criteria (RG-08)', funct
     $result = (new ScoreCalculator)->calculate($offer, calculatorPayload(['experience' => 70]));
 
     expect($result['match_score'])->toBeNull()
-        ->and($result['match_breakdown'])->toBe([]);
+        ->and($result['match_breakdown'])->toBeNull()
+        ->and($result['knockout_flags'])->toBeNull();
 });
 
 it('skips criteria the LLM did not return', function (): void {

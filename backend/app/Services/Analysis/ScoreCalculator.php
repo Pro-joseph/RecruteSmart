@@ -59,10 +59,12 @@ class ScoreCalculator
             }
         }
 
+        $matchScore = $weightSum > 0 ? (int) round($sum / $weightSum) : null;
+
         return [
-            'match_score' => $weightSum > 0 ? (int) round($sum / $weightSum) : null,
-            'match_breakdown' => $breakdown,
-            'knockout_flags' => $knockoutFlags,
+            'match_score' => $matchScore,
+            'match_breakdown' => $matchScore === null ? null : $breakdown,
+            'knockout_flags' => $matchScore === null ? null : $knockoutFlags,
         ];
     }
 

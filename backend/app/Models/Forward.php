@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
@@ -71,5 +72,11 @@ class Forward extends Model
     {
         return $this->belongsToMany(Application::class, 'forward_application')
             ->withPivot('candidate_name_snapshot');
+    }
+
+    /** @return HasMany<ForwardApplication, $this> */
+    public function snapshots(): HasMany
+    {
+        return $this->hasMany(ForwardApplication::class);
     }
 }

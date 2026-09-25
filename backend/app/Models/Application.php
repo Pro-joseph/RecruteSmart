@@ -21,6 +21,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property ApplicationStatus $status
  * @property array<string, mixed>|null $answers
  * @property list<array<string, mixed>>|null $files
+ * @property string|null $cv_path
+ * @property string|null $cv_original_name
+ * @property string|null $cv_mime
+ * @property int|null $cv_size
  * @property CarbonImmutable|null $consent_at
  * @property CarbonImmutable|null $created_at
  */

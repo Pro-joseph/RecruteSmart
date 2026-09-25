@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ForwardController;
 use App\Http\Controllers\Api\InterviewController;
 use App\Http\Controllers\Api\OfferController;
 use App\Http\Controllers\Api\OfferFormFieldController;
+use App\Http\Controllers\Public\ForwardedCvController;
 use App\Http\Controllers\Public\PublicApplicationController;
 use App\Http\Controllers\Public\PublicOfferController;
 use Illuminate\Support\Facades\Route;
@@ -47,9 +49,15 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::patch('/interviews/{interview}', [InterviewController::class, 'update']);
     Route::get('/applications/{application}/files/{key}', [ApplicationController::class, 'download'])
         ->where('key', '[a-z0-9_]+');
+    Route::post('/forwards', [ForwardController::class, 'store']);
+    Route::get('/forwards', [ForwardController::class, 'index']);
+    Route::get('/forwards/{forward}', [ForwardController::class, 'show']);
 });
 
 Route::get('/public/offers/{token}', [PublicOfferController::class, 'show'])
     ->middleware(['throttle:30,1']);
 Route::post('/public/offers/{token}/applications', [PublicApplicationController::class, 'store'])
     ->middleware(['throttle:5,1', 'throttle:30,60']);
+Route::get('/public/forwards/cv/{application}', ForwardedCvController::class)
+    ->name('forwarded-cv')
+    ->middleware(['signed', 'throttle:30,1']);

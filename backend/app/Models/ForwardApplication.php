@@ -17,6 +17,9 @@ class ForwardApplication extends Model
 {
     public const UPDATED_AT = null;
 
+    /** @var string */
+    protected $table = 'forward_application';
+
     protected $fillable = [
         'application_id',
         'candidate_name_snapshot',

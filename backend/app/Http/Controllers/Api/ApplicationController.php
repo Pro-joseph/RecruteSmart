@@ -8,6 +8,7 @@ use App\Enums\ApplicationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Applications\AddNoteRequest;
 use App\Http\Requests\Applications\BulkStatusRequest;
+use App\Http\Requests\Applications\ListApplicationsRequest;
 use App\Http\Requests\Applications\UpdateStatusRequest;
 use App\Http\Resources\ApplicationDetailResource;
 use App\Http\Resources\ApplicationEventResource;
@@ -15,6 +16,7 @@ use App\Http\Resources\ApplicationResource;
 use App\Jobs\AnalyzeApplicationJob;
 use App\Models\Application;
 use App\Models\Offer;
+use App\Services\Applications\ApplicationFilter;
 use App\Services\Applications\ApplicationUpdater;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,30 +27,12 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class ApplicationController extends Controller
 {
-    /**
-     * @var list<string>
-     */
-    private const SORTABLE = ['created_at', 'full_name'];
-
-    public function index(Request $request, Offer $offer): JsonResponse
+    public function index(ListApplicationsRequest $request, Offer $offer): JsonResponse
     {
-        Gate::authorize('view', $offer);
-
-        $sort = (string) $request->query('sort', '-created_at');
-        $direction = str_starts_with($sort, '-') ? 'desc' : 'asc';
-        $column = ltrim($sort, '-');
-
-        if (! in_array($column, self::SORTABLE, true)) {
-            $column = 'created_at';
-            $direction = 'desc';
-        }
-
-        $perPage = min($request->integer('per_page', 25), 100);
-
-        $applications = $offer->applications()
+        $applications = app(ApplicationFilter::class)
+            ->apply($offer->applications()->getQuery(), $request->validated())
             ->with(['analysis', 'skills', 'offer:id,criteria_version'])
-            ->orderBy($column, $direction)
-            ->paginate($perPage);
+            ->paginate(min($request->integer('per_page', 25), 100));
 
         return ApplicationResource::collection($applications)->response($request);
     }

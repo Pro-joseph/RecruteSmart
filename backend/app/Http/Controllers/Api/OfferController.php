@@ -13,6 +13,7 @@ use App\Jobs\AnalyzeApplicationJob;
 use App\Models\Offer;
 use App\Services\Audit\AuditLogger;
 use App\Services\Offers\OfferService;
+use App\Services\Offers\OfferStatsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -61,6 +62,13 @@ class OfferController extends Controller
         ]);
 
         return (new OfferResource($offer))->response($request);
+    }
+
+    public function stats(Request $request, Offer $offer): JsonResponse
+    {
+        Gate::authorize('view', $offer);
+
+        return response()->json(['data' => app(OfferStatsService::class)->for($offer)]);
     }
 
     public function update(UpdateOfferRequest $request, Offer $offer): JsonResponse

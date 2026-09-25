@@ -18,6 +18,7 @@ import {
   parseFilterParams,
   toListParams,
 } from './list-filters.component';
+import { SavedViewsComponent } from './saved-views.component';
 import { STATUS_BADGES, STATUS_LABELS, VERDICT_BADGES, VERDICT_LABELS } from './application-labels';
 
 interface SortableColumn {
@@ -36,7 +37,7 @@ const SORTABLE: SortableColumn[] = [
 @Component({
   selector: 'app-workspace',
   standalone: true,
-  imports: [RouterLink, FormsModule, ListFiltersComponent],
+  imports: [RouterLink, FormsModule, ListFiltersComponent, SavedViewsComponent],
   template: `
     <p><a routerLink="/app/offers">← Offres</a></p>
     @if (offer(); as o) {
@@ -61,6 +62,11 @@ const SORTABLE: SortableColumn[] = [
           (ngModelChange)="onSearch($event)"
         />
       </label>
+      <app-saved-views
+        [offerId]="offerId"
+        [query]="listQuery()"
+        (applyView)="onApplyView($event)"
+      />
       <span class="muted">{{ total() }} candidature(s)</span>
     </div>
 
@@ -411,13 +417,26 @@ export class WorkspacePage implements OnInit, OnDestroy {
     });
   }
 
+  /** EF-809: reapply a saved view by writing its query params to the URL. */
+  onApplyView(query: Record<string, string | string[]>): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: query,
+      onSameUrlNavigation: 'ignore',
+    });
+  }
+
   /** Query params shared with the fiche so prev/next and back keep the list context. */
-  listQuery(): Record<string, unknown> {
-    return {
+  listQuery(): Record<string, string | string[]> {
+    const query: Record<string, string | string[] | undefined> = {
       ...filterQueryParams(this.filters()),
       sort: this.sort() === '-match_score' ? undefined : this.sort(),
-      page: this.page() > 1 ? this.page() : undefined,
+      page: this.page() > 1 ? String(this.page()) : undefined,
     };
+    for (const key of Object.keys(query)) {
+      if (query[key] === undefined) delete query[key];
+    }
+    return query as Record<string, string | string[]>;
   }
 
   go(delta: number): void {

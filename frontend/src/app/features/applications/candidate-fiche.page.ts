@@ -759,12 +759,16 @@ export class CandidateFichePage implements OnInit {
     });
   }
 
-  listQuery(): Record<string, unknown> {
-    return {
+  listQuery(): Record<string, string | string[]> {
+    const query: Record<string, string | string[] | undefined> = {
       ...filterQueryParams(this.filters),
       sort: this.sort === '-match_score' ? undefined : this.sort,
-      page: this.page > 1 ? this.page : undefined,
+      page: this.page > 1 ? String(this.page) : undefined,
     };
+    for (const key of Object.keys(query)) {
+      if (query[key] === undefined) delete query[key];
+    }
+    return query as Record<string, string | string[]>;
   }
 
   async changeStatus(status: string): Promise<void> {

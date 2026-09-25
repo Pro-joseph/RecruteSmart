@@ -87,6 +87,12 @@ class Application extends Model
         return $this->hasMany(ApplicationEvent::class);
     }
 
+    /** @return HasMany<Interview, $this> */
+    public function interviews(): HasMany
+    {
+        return $this->hasMany(Interview::class);
+    }
+
     /** @param Builder<$this> $query */
     public function scopeForRecruiter($query, int $userId): void
     {

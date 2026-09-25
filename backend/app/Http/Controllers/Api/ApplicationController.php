@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ApplicationResource;
+use App\Jobs\AnalyzeApplicationJob;
 use App\Models\Application;
 use App\Models\Offer;
 use Illuminate\Http\JsonResponse;
@@ -37,9 +38,22 @@ class ApplicationController extends Controller
 
         $perPage = min($request->integer('per_page', 25), 100);
 
-        $applications = $offer->applications()->orderBy($column, $direction)->paginate($perPage);
+        $applications = $offer->applications()
+            ->with(['analysis', 'skills', 'offer:id,criteria_version'])
+            ->orderBy($column, $direction)
+            ->paginate($perPage);
 
         return ApplicationResource::collection($applications)->response($request);
+    }
+
+    public function reanalyze(Application $application): JsonResponse
+    {
+        $application->load('offer');
+        Gate::authorize('update', $application);
+
+        AnalyzeApplicationJob::dispatch($application->id);
+
+        return response()->json(['data' => ['status' => 'queued']], 202);
     }
 
     public function download(Request $request, Application $application, string $key): StreamedResponse

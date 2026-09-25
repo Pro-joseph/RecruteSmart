@@ -30,9 +30,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/offers/{offer}/close', [OfferController::class, 'close']);
     Route::post('/offers/{offer}/duplicate', [OfferController::class, 'duplicate']);
     Route::post('/offers/{offer}/regenerate-link', [OfferController::class, 'regenerateLink']);
+    Route::post('/offers/{offer}/reanalyze', [OfferController::class, 'reanalyze']);
     Route::get('/offers/{offer}/form-fields', [OfferFormFieldController::class, 'index']);
     Route::put('/offers/{offer}/form-fields', [OfferFormFieldController::class, 'update']);
     Route::get('/offers/{offer}/applications', [ApplicationController::class, 'index']);
+    Route::post('/applications/{application}/reanalyze', [ApplicationController::class, 'reanalyze']);
     Route::get('/applications/{application}/files/{key}', [ApplicationController::class, 'download'])
         ->where('key', '[a-z0-9_]+');
 });

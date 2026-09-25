@@ -343,6 +343,39 @@ const EVENT_BADGES: Record<string, string> = {
               }
             </ol>
           </section>
+
+          <section class="panel section privacy">
+            <h2>Données personnelles</h2>
+            <p class="muted small">
+              Droits d'accès du candidat (RGPD) : export complet et suppression définitive des
+              données et des fichiers.
+            </p>
+            <div class="privacy-actions">
+              <button type="button" class="btn" (click)="exportZip()" [disabled]="busy()">
+                Exporter (ZIP)
+              </button>
+              <button
+                type="button"
+                class="btn btn-danger"
+                (click)="confirmDelete()"
+                [disabled]="busy()"
+              >
+                Supprimer définitivement
+              </button>
+            </div>
+            @if (confirming()) {
+              <p class="confirm-note">
+                Supprimer <strong>{{ app()!.full_name }}</strong> ? Les fichiers seront effacés et
+                cette action est irréversible.
+              </p>
+              <div class="privacy-actions">
+                <button type="button" class="btn btn-danger" (click)="deleteCandidate()">
+                  Oui, supprimer
+                </button>
+                <button type="button" class="btn" (click)="confirming.set(false)">Annuler</button>
+              </div>
+            }
+          </section>
         </div>
       </div>
     }
@@ -663,6 +696,26 @@ const EVENT_BADGES: Record<string, string> = {
       .event-detail {
         margin-top: 0.2rem;
       }
+
+      .privacy {
+        border-top: 1px solid var(--line);
+      }
+
+      .privacy-actions {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+        margin-top: 0.75rem;
+      }
+
+      .confirm-note {
+        margin-top: 0.75rem;
+        padding: 0.55rem 0.8rem;
+        background: var(--amber-soft);
+        color: var(--amber);
+        border-radius: 8px;
+        font-size: 0.88rem;
+      }
     `,
   ],
 })
@@ -674,6 +727,8 @@ export class CandidateFichePage implements OnInit {
   readonly next = signal<ApplicationRow | null>(null);
   readonly previewUrl = signal<SafeResourceUrl | null>(null);
   private readonly previewRaw = signal<string | null>(null);
+  readonly busy = signal(false);
+  readonly confirming = signal(false);
 
   readonly statuses = STATUSES;
   readonly statusLabels = STATUS_LABELS;
@@ -865,6 +920,41 @@ export class CandidateFichePage implements OnInit {
 
   isPdf(file: FicheFile): boolean {
     return file.mime === 'application/pdf';
+  }
+
+  /** EF-1203: download the full candidate file as a ZIP. */
+  async exportZip(): Promise<void> {
+    const current = this.app();
+    if (!current || this.busy()) return;
+    this.busy.set(true);
+    try {
+      await this.api.exportZip(current.id, `candidat-${current.id}`);
+    } catch {
+      this.error.set('Export impossible.');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** EF-1201: two-step confirmation before the irreversible deletion. */
+  confirmDelete(): void {
+    this.confirming.set(true);
+  }
+
+  async deleteCandidate(): Promise<void> {
+    const current = this.app();
+    if (!current || this.busy()) return;
+    this.busy.set(true);
+    try {
+      await this.api.destroy(current.id);
+      await this.router.navigate(['/app/offers', this.offerId], {
+        queryParams: this.listQuery(),
+      });
+    } catch {
+      this.error.set('Suppression impossible.');
+      this.confirming.set(false);
+      this.busy.set(false);
+    }
   }
 
   breakdownEntries(breakdown: Record<string, { score: number; weight: number; evidence: string }>) {

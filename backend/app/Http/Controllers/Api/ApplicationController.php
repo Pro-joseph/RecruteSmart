@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ApplicationDetailResource;
+use App\Http\Resources\ApplicationEventResource;
 use App\Http\Resources\ApplicationResource;
 use App\Jobs\AnalyzeApplicationJob;
 use App\Models\Application;
@@ -54,6 +56,28 @@ class ApplicationController extends Controller
         AnalyzeApplicationJob::dispatch($application->id);
 
         return response()->json(['data' => ['status' => 'queued']], 202);
+    }
+
+    public function show(Application $application): JsonResponse
+    {
+        $application->load(['offer.formFields', 'analysis', 'skills']);
+        Gate::authorize('view', $application);
+
+        return (new ApplicationDetailResource($application))->response();
+    }
+
+    public function events(Request $request, Application $application): JsonResponse
+    {
+        $application->load('offer');
+        Gate::authorize('view', $application);
+
+        $events = $application->events()
+            ->with('user:id,name,email')
+            ->latest('created_at')
+            ->limit(100)
+            ->get();
+
+        return ApplicationEventResource::collection($events)->response($request);
     }
 
     public function download(Request $request, Application $application, string $key): StreamedResponse

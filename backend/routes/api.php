@@ -35,6 +35,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::put('/offers/{offer}/form-fields', [OfferFormFieldController::class, 'update']);
     Route::get('/offers/{offer}/applications', [ApplicationController::class, 'index']);
     Route::post('/applications/{application}/reanalyze', [ApplicationController::class, 'reanalyze']);
+    Route::get('/applications/{application}', [ApplicationController::class, 'show']);
+    Route::get('/applications/{application}/events', [ApplicationController::class, 'events']);
     Route::get('/applications/{application}/files/{key}', [ApplicationController::class, 'download'])
         ->where('key', '[a-z0-9_]+');
 });

@@ -47,11 +47,13 @@ class ApplicationEvent extends Model
         ];
     }
 
+    /** @return BelongsTo<Application, $this> */
     public function application(): BelongsTo
     {
         return $this->belongsTo(Application::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

@@ -1,56 +1,48 @@
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { ApplicationRow, Offer, OffersService, Paginated } from '../../core/api/offers.service';
-
-const STATUS_LABELS: Record<string, string> = {
-  new: 'Nouveau',
-  shortlisted: 'Présélectionné',
-  interview: 'Entretien',
-  offer: 'Proposition',
-  hired: 'Recruté',
-  rejected: 'Refusé',
-};
-
-const VERDICT_LABELS: Record<string, string> = {
-  compliant: 'Conforme',
-  improvable: 'À améliorer',
-  non_compliant: 'Non conforme',
-};
-
-const VERDICT_BADGES: Record<string, string> = {
-  compliant: 'badge-green',
-  improvable: 'badge-amber',
-  non_compliant: 'badge-red',
-};
-
-const STATUS_BADGES: Record<string, string> = {
-  new: 'badge-blue',
-  shortlisted: 'badge-indigo',
-  interview: 'badge-teal',
-  offer: 'badge-amber',
-  hired: 'badge-green',
-  rejected: 'badge-red',
-};
+import {
+  ApplicationListParams,
+  ApplicationRow,
+  Offer,
+  OffersService,
+  Paginated,
+  SkillFacet,
+} from '../../core/api/offers.service';
+import {
+  EMPTY_FILTERS,
+  FilterPatch,
+  ListFilters,
+  ListFiltersComponent,
+} from './list-filters.component';
+import { STATUS_BADGES, STATUS_LABELS, VERDICT_BADGES, VERDICT_LABELS } from './application-labels';
 
 interface SortableColumn {
   key: string;
   label: string;
-  numeric?: boolean;
 }
 
 const SORTABLE: SortableColumn[] = [
   { key: 'full_name', label: 'Candidat' },
-  { key: 'match_score', label: 'Score', numeric: true },
-  { key: 'ats_score', label: 'ATS', numeric: true },
-  { key: 'years_experience', label: 'Exp.', numeric: true },
+  { key: 'match_score', label: 'Score' },
+  { key: 'ats_score', label: 'ATS' },
+  { key: 'years_experience', label: 'Exp.' },
   { key: 'created_at', label: 'Date' },
 ];
+
+const NUMERIC_FILTERS = new Set([
+  'min_score',
+  'max_score',
+  'ats_min',
+  'ats_max',
+  'exp_min',
+  'exp_max',
+]);
 
 @Component({
   selector: 'app-workspace',
   standalone: true,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, ListFiltersComponent],
   template: `
     <p><a routerLink="/app/offers">← Offres</a></p>
     @if (offer(); as o) {
@@ -71,12 +63,19 @@ const SORTABLE: SortableColumn[] = [
         <input
           type="search"
           placeholder="Nom, e-mail ou compétence…"
-          [ngModel]="search()"
+          [ngModel]="filters().q"
           (ngModelChange)="onSearch($event)"
         />
       </label>
       <span class="muted">{{ total() }} candidature(s)</span>
     </div>
+
+    <app-list-filters
+      [f]="filters()"
+      [facets]="facets()"
+      (change)="onFilterChange($event)"
+      (reset)="onReset()"
+    />
 
     @if (refreshing()) {
       <div class="refresh-bar" role="status" aria-label="Actualisation"></div>
@@ -192,8 +191,17 @@ const SORTABLE: SortableColumn[] = [
                   <div class="empty">
                     <h3>Aucune candidature</h3>
                     <p>
-                      Aucun résultat pour cette offre. Partagez le lien public pour en recevoir.
+                      @if (hasFilters()) {
+                        Aucun résultat avec ces filtres. Essayez de les élargir.
+                      } @else {
+                        Partagez le lien public pour recevoir des candidatures.
+                      }
                     </p>
+                    @if (hasFilters()) {
+                      <button type="button" class="btn" (click)="onReset()">
+                        Réinitialiser les filtres
+                      </button>
+                    }
                   </div>
                 </td>
               </tr>
@@ -225,7 +233,7 @@ const SORTABLE: SortableColumn[] = [
         align-items: end;
         justify-content: space-between;
         gap: 1rem;
-        margin: 1rem 0 0.75rem;
+        margin: 1rem 0 0.25rem;
       }
 
       .search {
@@ -235,10 +243,6 @@ const SORTABLE: SortableColumn[] = [
 
       .small {
         font-size: 0.8rem;
-      }
-
-      td .badge + .badge {
-        margin-left: 0.35rem;
       }
 
       .chip {
@@ -256,21 +260,27 @@ const SORTABLE: SortableColumn[] = [
       .alert {
         margin: 0.75rem 0;
       }
+
+      .empty .btn {
+        margin-top: 0.75rem;
+      }
     `,
   ],
 })
 export class WorkspacePage implements OnInit, OnDestroy {
   readonly offer = signal<Offer | null>(null);
   readonly rows = signal<ApplicationRow[]>([]);
+  readonly facets = signal<SkillFacet[]>([]);
   readonly page = signal(1);
   readonly lastPage = signal(1);
   readonly total = signal(0);
   readonly error = signal<string | null>(null);
   readonly loading = signal(true);
   readonly refreshing = signal(false);
-  readonly search = signal('');
-  readonly sortKey = signal('match_score');
-  readonly sortDir = signal<'asc' | 'desc'>('desc');
+  readonly filters = signal<ListFilters>(EMPTY_FILTERS);
+  readonly sort = signal('-match_score');
+  readonly sortKey = computed(() => this.sort().replace(/^-/, ''));
+  readonly sortDir = computed<'asc' | 'desc'>(() => (this.sort().startsWith('-') ? 'desc' : 'asc'));
 
   readonly sortable = SORTABLE;
   readonly VERDICT_LABELS = VERDICT_LABELS;
@@ -281,18 +291,26 @@ export class WorkspacePage implements OnInit, OnDestroy {
   offerId = 0;
 
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
+  private patchTimer: ReturnType<typeof setTimeout> | null = null;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private destroyed = false;
 
   constructor(
     private readonly api: OffersService,
     private readonly route: ActivatedRoute,
+    private readonly router: Router,
   ) {}
 
   ngOnInit(): void {
     this.offerId = Number(this.route.snapshot.paramMap.get('id'));
     void this.loadOffer();
-    void this.loadPage(1, { silent: false });
+    void this.loadFacets();
+
+    this.route.queryParams.subscribe((params) => {
+      this.filters.set(this.parseFilters(params));
+      this.sort.set(typeof params['sort'] === 'string' ? params['sort'] : '-match_score');
+      void this.loadPage(Number(params['page']) || 1, { silent: false });
+    });
 
     this.pollTimer = setInterval(() => this.poll(), 5000);
     document.addEventListener('visibilitychange', this.onVisibility);
@@ -302,6 +320,7 @@ export class WorkspacePage implements OnInit, OnDestroy {
     this.destroyed = true;
     if (this.pollTimer !== null) clearInterval(this.pollTimer);
     if (this.searchTimer !== null) clearTimeout(this.searchTimer);
+    if (this.patchTimer !== null) clearTimeout(this.patchTimer);
     document.removeEventListener('visibilitychange', this.onVisibility);
   }
 
@@ -313,6 +332,14 @@ export class WorkspacePage implements OnInit, OnDestroy {
     }
   }
 
+  async loadFacets(): Promise<void> {
+    try {
+      this.facets.set(await this.api.applicationSkills(this.offerId));
+    } catch {
+      this.facets.set([]);
+    }
+  }
+
   async loadPage(page: number, opts: { silent: boolean }): Promise<void> {
     if (!opts.silent) {
       this.error.set(null);
@@ -321,12 +348,25 @@ export class WorkspacePage implements OnInit, OnDestroy {
       this.refreshing.set(true);
     }
     try {
-      const sort = `${this.sortDir() === 'desc' ? '-' : ''}${this.sortKey()}`;
-      const res: Paginated<ApplicationRow> = await this.api.listApplications(this.offerId, {
-        page,
-        sort,
-        q: this.search() || undefined,
-      });
+      const f = this.filters();
+      const params: ApplicationListParams = { page, sort: this.sort() };
+      if (f.q) params.q = f.q;
+      for (const key of NUMERIC_FILTERS) {
+        const value = (f as unknown as Record<string, string>)[key];
+        if (value !== '') params[key as 'min_score'] = Number(value);
+      }
+      if (f.ats) params.ats = f.ats;
+      if (f.city) params.city = f.city;
+      if (f.country) params.country = f.country;
+      if (f.applied_from) params.applied_from = f.applied_from;
+      if (f.applied_to) params.applied_to = f.applied_to;
+      if (f.skills.length) {
+        params.skills = f.skills;
+        params.skills_mode = f.skills_mode;
+      }
+      if (f.status.length) params.status = f.status;
+
+      const res: Paginated<ApplicationRow> = await this.api.listApplications(this.offerId, params);
       this.rows.set(res.data);
       this.page.set(res.meta.current_page);
       this.lastPage.set(res.meta.last_page);
@@ -341,13 +381,9 @@ export class WorkspacePage implements OnInit, OnDestroy {
   }
 
   toggleSort(key: string): void {
-    if (this.sortKey() === key) {
-      this.sortDir.set(this.sortDir() === 'desc' ? 'asc' : 'desc');
-    } else {
-      this.sortKey.set(key);
-      this.sortDir.set(key === 'full_name' || key === 'created_at' ? 'asc' : 'desc');
-    }
-    void this.loadPage(1, { silent: false });
+    const dir =
+      this.sortKey() === key ? (this.sortDir() === 'desc' ? 'asc' : 'desc') : this.defaultDir(key);
+    this.navigate({ sort: `${dir === 'desc' ? '-' : ''}${key}`, page: undefined });
   }
 
   ariaSort(key: string): string {
@@ -356,15 +392,66 @@ export class WorkspacePage implements OnInit, OnDestroy {
   }
 
   onSearch(value: string): void {
-    this.search.set(value);
     if (this.searchTimer !== null) clearTimeout(this.searchTimer);
     this.searchTimer = setTimeout(() => {
-      void this.loadPage(1, { silent: false });
+      this.navigate({ q: value || undefined, page: undefined });
     }, 300);
   }
 
+  onFilterChange(event: FilterPatch): void {
+    this.filters.update((current) => ({ ...current, ...event.patch }));
+    if (this.patchTimer !== null) clearTimeout(this.patchTimer);
+    const apply = () => this.navigate(this.filtersToParams(this.filters()));
+    if (event.debounce) {
+      this.patchTimer = setTimeout(apply, 300);
+    } else {
+      apply();
+    }
+  }
+
+  onReset(): void {
+    this.filters.set(EMPTY_FILTERS);
+    this.navigate({
+      q: undefined,
+      min_score: undefined,
+      max_score: undefined,
+      ats: undefined,
+      ats_min: undefined,
+      ats_max: undefined,
+      exp_min: undefined,
+      exp_max: undefined,
+      city: undefined,
+      country: undefined,
+      applied_from: undefined,
+      applied_to: undefined,
+      skills: undefined,
+      skills_mode: undefined,
+      status: undefined,
+      page: undefined,
+    });
+  }
+
   go(delta: number): void {
-    void this.loadPage(this.page() + delta, { silent: false });
+    this.navigate({ page: this.page() + delta <= 1 ? undefined : this.page() + delta });
+  }
+
+  hasFilters(): boolean {
+    return (
+      this.filters().q !== '' ||
+      this.filters().min_score !== '' ||
+      this.filters().max_score !== '' ||
+      this.filters().ats !== '' ||
+      this.filters().ats_min !== '' ||
+      this.filters().ats_max !== '' ||
+      this.filters().exp_min !== '' ||
+      this.filters().exp_max !== '' ||
+      this.filters().city !== '' ||
+      this.filters().country !== '' ||
+      this.filters().applied_from !== '' ||
+      this.filters().applied_to !== '' ||
+      this.filters().skills.length > 0 ||
+      this.filters().status.length > 0
+    );
   }
 
   analysisBadge(app: ApplicationRow): { label: string; cls: string } | null {
@@ -394,6 +481,77 @@ export class WorkspacePage implements OnInit, OnDestroy {
 
   async copy(url: string): Promise<void> {
     await navigator.clipboard.writeText(url);
+  }
+
+  private defaultDir(key: string): 'asc' | 'desc' {
+    return key === 'full_name' || key === 'created_at' ? 'asc' : 'desc';
+  }
+
+  private navigate(overrides: Record<string, unknown>): void {
+    const query: Record<string, unknown> = {
+      ...this.filtersToParams(this.filters()),
+      sort: this.sort() === '-match_score' ? undefined : this.sort(),
+      page: this.page() > 1 ? this.page() : undefined,
+      ...overrides,
+    };
+    for (const key of Object.keys(query)) {
+      if (query[key] === undefined) delete query[key];
+    }
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: query,
+      onSameUrlNavigation: 'ignore',
+    });
+  }
+
+  private filtersToParams(f: ListFilters): Record<string, string | string[] | undefined> {
+    return {
+      q: f.q || undefined,
+      min_score: f.min_score || undefined,
+      max_score: f.max_score || undefined,
+      ats: f.ats || undefined,
+      ats_min: f.ats_min || undefined,
+      ats_max: f.ats_max || undefined,
+      exp_min: f.exp_min || undefined,
+      exp_max: f.exp_max || undefined,
+      city: f.city || undefined,
+      country: f.country || undefined,
+      applied_from: f.applied_from || undefined,
+      applied_to: f.applied_to || undefined,
+      skills: f.skills.length ? f.skills : undefined,
+      skills_mode: f.skills.length && f.skills_mode === 'all' ? f.skills_mode : undefined,
+      status: f.status.length ? f.status : undefined,
+    };
+  }
+
+  private parseFilters(params: Record<string, unknown>): ListFilters {
+    const str = (key: string): string => {
+      const value = params[key];
+      return typeof value === 'string' ? value : '';
+    };
+    const list = (key: string): string[] => {
+      const value = params[key];
+      if (Array.isArray(value)) return value.map(String);
+      return typeof value === 'string' && value !== '' ? [value] : [];
+    };
+    const skills = list('skills');
+    return {
+      q: str('q'),
+      min_score: str('min_score'),
+      max_score: str('max_score'),
+      ats: str('ats'),
+      ats_min: str('ats_min'),
+      ats_max: str('ats_max'),
+      exp_min: str('exp_min'),
+      exp_max: str('exp_max'),
+      city: str('city'),
+      country: str('country'),
+      applied_from: str('applied_from'),
+      applied_to: str('applied_to'),
+      skills,
+      skills_mode: str('skills_mode') === 'all' ? 'all' : 'any',
+      status: list('status'),
+    };
   }
 
   private readonly onVisibility = (): void => {

@@ -1,0 +1,12 @@
+{
+  "/api": {
+    "target": "http://nginx",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/sanctum": {
+    "target": "http://nginx",
+    "secure": false,
+    "changeOrigin": true
+  }
+}

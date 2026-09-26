@@ -24,7 +24,8 @@ class ApplicationExporter
     {
         $application->loadMissing(['offer:id,title', 'analysis', 'skills', 'events']);
 
-        $tmpPath = tempnam(sys_get_temp_dir(), 'export-').'.zip';
+        // ponytail: reuse the tempnam() file itself — appending '.zip' orphaned it
+        $tmpPath = tempnam(sys_get_temp_dir(), 'export-');
         $zip = new ZipArchive;
 
         if ($zip->open($tmpPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {

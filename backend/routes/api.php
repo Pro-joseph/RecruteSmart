@@ -30,6 +30,7 @@ Route::prefix('auth')->group(function (): void {
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/form-field-catalog', [OfferFormFieldController::class, 'catalog']);
+    Route::post('/offers/extract', [OfferController::class, 'extract'])->middleware('throttle:llm');
     Route::apiResource('offers', OfferController::class);
     Route::post('/offers/{offer}/publish', [OfferController::class, 'publish']);
     Route::post('/offers/{offer}/close', [OfferController::class, 'close']);

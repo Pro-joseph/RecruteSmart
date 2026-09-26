@@ -57,8 +57,12 @@ class SendDailyDigest extends Command
                 continue;
             }
 
-            Mail::to($rows->first()->email)->send(new DailyDigestMail($offers, $total));
-            $sent++;
+            try {
+                Mail::to($rows->first()->email)->send(new DailyDigestMail($offers, $total));
+                $sent++;
+            } catch (\Throwable $e) {
+                $this->warn(sprintf('Digest failed for %s: %s', $rows->first()->email, $e->getMessage()));
+            }
         }
 
         $this->info($this->option('dry-run') ? 'Dry run done.' : sprintf('%d digest(s) sent.', $sent));

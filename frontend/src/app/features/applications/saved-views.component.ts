@@ -75,11 +75,17 @@ function writeViews(offerId: number, views: SavedView[]): void {
       </button>
     }
 
-    @if (selected()) {
+    @if (confirmDelete()) {
+      <span class="confirm-text">Supprimer la vue « {{ selected() }} » ?</span>
+      <button type="button" class="btn btn-danger" (click)="removeSelected()">Supprimer</button>
+      <button type="button" class="btn btn-ghost" (click)="confirmDelete.set(false)">
+        Annuler
+      </button>
+    } @else if (selected()) {
       <button
         type="button"
         class="btn btn-ghost"
-        (click)="removeSelected()"
+        (click)="confirmDelete.set(true)"
         title="Supprimer cette vue"
       >
         ×
@@ -114,6 +120,7 @@ export class SavedViewsComponent {
   readonly views = signal<SavedView[]>([]);
   readonly selected = signal('');
   readonly editing = signal(false);
+  readonly confirmDelete = signal(false);
 
   draft = '';
 
@@ -133,6 +140,7 @@ export class SavedViewsComponent {
 
   apply(name: string): void {
     this.selected.set(name);
+    this.confirmDelete.set(false);
     const view = this.views().find((v) => v.name === name);
     if (view) this.applyView.emit(view.query);
   }
@@ -167,5 +175,6 @@ export class SavedViewsComponent {
     this.views.set(views);
     writeViews(this.offerId(), views);
     this.selected.set('');
+    this.confirmDelete.set(false);
   }
 }

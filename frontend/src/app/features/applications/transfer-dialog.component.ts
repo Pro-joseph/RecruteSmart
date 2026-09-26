@@ -1,4 +1,14 @@
-import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+  ViewChild,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CreateForwardPayload, ForwardsService } from '../../core/api/forwards.service';
 import { ListFilters, filterQueryParams } from './list-filters.component';
@@ -18,9 +28,18 @@ export interface TransferScope {
   imports: [FormsModule],
   template: `
     @if (open) {
-      <div class="backdrop" (click)="close.emit()"></div>
-      <div class="dialog panel" role="dialog" aria-modal="true" aria-label="Transférer par email">
-        <h2>Transférer par email</h2>
+      <div class="backdrop" (click)="requestClose()"></div>
+      <div
+        #dialog
+        class="dialog panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="transfer-title"
+        tabindex="-1"
+        (keydown.escape)="requestClose()"
+        (keydown.tab)="trapTab($event)"
+      >
+        <h2 id="transfer-title">Transférer par email</h2>
         <p class="muted small">
           @if (scope?.selectAll) {
             {{ scope!.total }} candidature(s) correspondant aux filtres courants.
@@ -59,7 +78,7 @@ export interface TransferScope {
         }
 
         <div class="actions">
-          <button type="button" class="btn" (click)="close.emit()">Annuler</button>
+          <button type="button" class="btn" (click)="requestClose()">Annuler</button>
           <button
             type="button"
             class="btn btn-primary"
@@ -96,6 +115,11 @@ export interface TransferScope {
         box-shadow: var(--shadow-md);
         z-index: 41;
         animation: dialog-in 260ms var(--ease);
+      }
+
+      .dialog:focus,
+      .dialog:focus-visible {
+        outline: none;
       }
 
       .dialog h2 {
@@ -143,11 +167,13 @@ export interface TransferScope {
     `,
   ],
 })
-export class TransferDialogComponent {
+export class TransferDialogComponent implements OnChanges {
   @Input() open = false;
   @Input() scope: TransferScope | null = null;
   @Output() readonly close = new EventEmitter<void>();
   @Output() readonly sent = new EventEmitter<void>();
+
+  @ViewChild('dialog') private dialog?: ElementRef<HTMLDivElement>;
 
   toEmails = '';
   subject = 'Candidatures';
@@ -158,6 +184,40 @@ export class TransferDialogComponent {
   readonly error = signal<string | null>(null);
 
   constructor(private readonly api: ForwardsService) {}
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['open']?.currentValue === true) {
+      // Move focus into the dialog once it exists.
+      setTimeout(() => this.dialog?.nativeElement.focus());
+    }
+  }
+
+  requestClose(): void {
+    if (this.sending()) return;
+    this.close.emit();
+  }
+
+  trapTab(event: Event): void {
+    const keyboard = event as KeyboardEvent;
+    const root = this.dialog?.nativeElement;
+    if (!root) return;
+    const focusable = Array.from(
+      root.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
+      ),
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (keyboard.shiftKey && (active === first || active === root)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!keyboard.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 
   valid(): boolean {
     const emails = this.splitEmails();

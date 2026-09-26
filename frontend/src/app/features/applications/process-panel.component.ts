@@ -160,14 +160,33 @@ const DECISIONS: { value: string; label: string }[] = [
           <textarea rows="3" [(ngModel)]="rejectDraft.message"></textarea>
         </label>
       }
-      <button
-        type="button"
-        class="btn btn-danger"
-        (click)="rejectCandidate()"
-        [disabled]="saving() || !rejectDraft.reason.trim()"
-      >
-        Refuser le candidat
-      </button>
+      @if (confirmReject()) {
+        <p class="confirm-text">
+          Refuser définitivement ce candidat ? Cette action change son statut.
+        </p>
+        <div class="row-actions">
+          <button
+            type="button"
+            class="btn btn-danger"
+            (click)="rejectCandidate()"
+            [disabled]="saving()"
+          >
+            {{ saving() ? 'Refus en cours…' : 'Confirmer le refus' }}
+          </button>
+          <button type="button" class="btn btn-ghost" (click)="confirmReject.set(false)">
+            Annuler
+          </button>
+        </div>
+      } @else {
+        <button
+          type="button"
+          class="btn btn-danger"
+          (click)="confirmReject.set(true)"
+          [disabled]="saving() || !rejectDraft.reason.trim()"
+        >
+          Refuser le candidat
+        </button>
+      }
     </section>
   `,
   styles: [
@@ -260,6 +279,7 @@ export class ProcessPanelComponent {
   readonly interviews = signal<Interview[]>([]);
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+  readonly confirmReject = signal(false);
 
   readonly interviewTypes = INTERVIEW_TYPES;
   readonly interviewStatuses = INTERVIEW_STATUSES;
@@ -365,9 +385,11 @@ export class ProcessPanelComponent {
         message: this.rejectDraft.message.trim() || undefined,
       });
       this.rejectDraft = { reason: '', send_email: false, message: '' };
+      this.confirmReject.set(false);
       this.changed.emit();
     } catch {
       this.error.set('Refus impossible.');
+      this.confirmReject.set(false);
     } finally {
       this.saving.set(false);
     }

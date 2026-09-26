@@ -7,7 +7,7 @@
       <a routerLink="/app/admin" routerLinkActive="active">Administration</a>
     }
     <span class="spacer"></span>
-    <span class="who">{{ u.name }}</span>
+    <span class="who" (click)="onNameTap()" title="{{ u.name }}">{{ u.name }}</span>
     <button type="button" class="btn btn-ghost" (click)="logout()">Déconnexion</button>
   </nav>
 } @else {
@@ -19,3 +19,7 @@
 <main>
   <router-outlet />
 </main>
+
+@if (celebrate()) {
+  <app-celebration (finished)="celebrate.set(false)" />
+}

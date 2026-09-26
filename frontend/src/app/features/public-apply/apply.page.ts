@@ -3,25 +3,41 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { PublicApplyService, PublicOffer } from './public-apply.service';
+import { CelebrationComponent } from '../../core/ui/celebration.component';
+
+const APPLIED_KEY = 'recrutesmart.applied.v1';
 
 type PageState = 'loading' | 'not-found' | 'closed' | 'form' | 'done';
 
 @Component({
   selector: 'app-apply',
   standalone: true,
-  imports: [RouterLink, ReactiveFormsModule],
+  imports: [RouterLink, ReactiveFormsModule, CelebrationComponent],
   template: `
     @if (state() === 'loading') {
-      <p role="status">Loading…</p>
+      <div aria-label="Chargement de l'offre" role="status">
+        <span class="skeleton" style="width: 55%; height: 2rem; margin-bottom: 1rem"></span>
+        <span class="skeleton" style="width: 90%; margin-bottom: 0.5rem"></span>
+        <span class="skeleton" style="width: 75%; margin-bottom: 2rem"></span>
+        <span class="skeleton" style="width: 45%; height: 2.2rem; margin-bottom: 0.8rem"></span>
+        <span class="skeleton" style="width: 45%; height: 2.2rem; margin-bottom: 0.8rem"></span>
+        <span class="skeleton" style="width: 45%; height: 2.2rem"></span>
+      </div>
     } @else if (state() === 'not-found') {
-      <h1>Offer not found</h1>
-      <p>This application link is invalid.</p>
+      <h1>Offre introuvable</h1>
+      <p>Ce lien de candidature n'est pas valide.</p>
     } @else if (state() === 'closed') {
       <h1>{{ offer()?.title }}</h1>
       <p>{{ closedMessage() }}</p>
     } @else if (state() === 'done') {
-      <h1>Application sent</h1>
-      <p>{{ successMessage() }}</p>
+      <div class="done-state">
+        <h1>Candidature envoyée</h1>
+        <p>{{ successMessage() }}</p>
+        <p class="muted">Vous recevrez un e-mail de confirmation à l'adresse indiquée.</p>
+      </div>
+      @if (celebrate()) {
+        <app-celebration (finished)="celebrate.set(false)" />
+      }
     } @else {
       <h1>{{ offer()?.title }}</h1>
       <p>{{ offer()?.description }}</p>
@@ -30,18 +46,36 @@ type PageState = 'loading' | 'not-found' | 'closed' | 'form' | 'done';
         <p>{{ offer()?.missions }}</p>
       }
       @if (offer()?.profile_wanted) {
-        <h2>Wanted profile</h2>
+        <h2>Profil recherché</h2>
         <p>{{ offer()?.profile_wanted }}</p>
       }
       <form [formGroup]="form" (ngSubmit)="submit()" enctype="multipart/form-data">
-        <label>Full name <input formControlName="full_name" autocomplete="name" /></label>
-        <label>Email <input type="email" formControlName="email" autocomplete="email" /></label>
+        <label>
+          Nom complet
+          <input formControlName="full_name" autocomplete="name" />
+          @if (shown('full_name')) {
+            <span class="field-error">Le nom est requis.</span>
+          }
+        </label>
+        <label>
+          E-mail
+          <input type="email" formControlName="email" autocomplete="email" />
+          @if (shown('email')) {
+            <span class="field-error">
+              {{
+                form.controls['email'].hasError('required')
+                  ? "L'e-mail est requis."
+                  : "Format d'e-mail invalide."
+              }}
+            </span>
+          }
+        </label>
         @for (field of dynamicFields(); track field.key) {
           <div>
             <label>
               {{ field.label }}
               @if (field.is_required) {
-                *
+                <span aria-hidden="true" style="color: var(--red)">*</span>
               }
               @switch (field.type) {
                 @case ('textarea') {
@@ -92,35 +126,47 @@ type PageState = 'loading' | 'not-found' | 'closed' | 'form' | 'done';
               }
             </label>
             @if (fieldError(field.key)) {
-              <p role="alert">{{ fieldError(field.key) }}</p>
+              <p role="alert" class="field-error">{{ fieldError(field.key) }}</p>
             }
           </div>
         }
-        <label
-          >CV (PDF or DOCX, 5 MB max) *
-          <input type="file" accept=".pdf,.docx" (change)="onFile('cv', $event)"
-        /></label>
+        <label>
+          CV (PDF ou DOCX, 5 Mo max)
+          <span aria-hidden="true" style="color: var(--red)">*</span>
+          <input type="file" accept=".pdf,.docx" (change)="onFile('cv', $event)" />
+        </label>
         @if (fieldError('files.cv')) {
-          <p role="alert">{{ fieldError('files.cv') }}</p>
+          <p role="alert" class="field-error">{{ fieldError('files.cv') }}</p>
         }
-        <label
-          ><input type="checkbox" formControlName="consent" /> I accept the processing of my data
-          for this recruitment. *</label
-        >
+        <label class="consent">
+          <input type="checkbox" formControlName="consent" />
+          J'accepte le traitement de mes données dans le cadre de cette recrutement.
+          <span aria-hidden="true" style="color: var(--red)">*</span>
+        </label>
+        @if (shown('consent')) {
+          <span class="field-error">Votre consentement est requis.</span>
+        }
         <input
           type="text"
           formControlName="website"
           tabindex="-1"
           autocomplete="off"
           aria-hidden="true"
-          style="display:none"
+          style="display: none"
         />
         @if (generalError()) {
-          <p role="alert">{{ generalError() }}</p>
+          <p role="alert" class="alert">{{ generalError() }}</p>
         }
-        <button type="submit" [disabled]="form.invalid || busy()">Send application</button>
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="form.invalid || busy()"
+          [class.is-busy]="busy()"
+        >
+          {{ busy() ? 'Envoi en cours…' : 'Envoyer ma candidature' }}
+        </button>
       </form>
-      <p><a routerLink="/login">Recruiter login</a></p>
+      <p><a routerLink="/login">Espace recruteur</a></p>
     }
   `,
 })
@@ -131,7 +177,9 @@ export class ApplyPage implements OnInit {
   readonly successMessage = signal('');
   readonly generalError = signal<string | null>(null);
   readonly busy = signal(false);
+  readonly celebrate = signal(false);
   readonly errors = signal<Record<string, string[]>>({});
+  readonly submitted = signal(false);
 
   form: FormGroup = new FormGroup({
     full_name: new FormControl('', {
@@ -170,7 +218,12 @@ export class ApplyPage implements OnInit {
   }
 
   controlName(field: { key: string }): string {
-    return `answers.${field.key}`;
+    return field.key;
+  }
+
+  shown(name: 'full_name' | 'email' | 'consent'): boolean {
+    const c = this.form.controls[name];
+    return c.invalid && (c.touched || this.submitted());
   }
 
   fieldError(key: string): string | null {
@@ -187,6 +240,13 @@ export class ApplyPage implements OnInit {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (file) this.files.set(key, file);
     else this.files.delete(key);
+    if (key === 'cv') {
+      this.errors.update((e) => {
+        const next = { ...e };
+        delete next['files.cv'];
+        return next;
+      });
+    }
   }
 
   async load(): Promise<void> {
@@ -196,10 +256,10 @@ export class ApplyPage implements OnInit {
       if (!offer.accepting_applications) {
         this.closedMessage.set(
           offer.closure_reason === 'closee'
-            ? 'This offer is closed and no longer accepts applications.'
+            ? "Cette offre est clôturée et n'accepte plus de candidatures."
             : offer.closure_reason === 'depassee'
-              ? 'The application deadline has passed.'
-              : 'This offer is not accepting applications at the moment.',
+              ? 'La date limite de candidature est dépassée.'
+              : "Cette offre n'accepte pas de candidatures pour le moment.",
         );
         this.state.set('closed');
         return;
@@ -229,15 +289,17 @@ export class ApplyPage implements OnInit {
         err instanceof HttpErrorResponse && err.status !== 404 ? 'closed' : 'not-found',
       );
       if (err instanceof HttpErrorResponse && err.status !== 404) {
-        this.closedMessage.set('This offer is currently unavailable.');
+        this.closedMessage.set('Cette offre est momentanément indisponible.');
       }
     }
   }
 
   async submit(): Promise<void> {
+    this.submitted.set(true);
     if (this.form.invalid || !this.files.has('cv')) {
+      this.form.markAllAsTouched();
       if (!this.files.has('cv')) {
-        this.errors.update((e) => ({ ...e, 'files.cv': ['The CV is required.'] }));
+        this.errors.update((e) => ({ ...e, 'files.cv': ['Le CV est requis.'] }));
       }
       return;
     }
@@ -255,7 +317,7 @@ export class ApplyPage implements OnInit {
       }
       for (const field of this.dynamicFields()) {
         if (['file', 'image'].includes(field.type)) continue;
-        const value = this.form.get(this.controlName(field))?.value;
+        const value = this.form.get(field.key)?.value;
         if (Array.isArray(value)) {
           value.forEach((v) => data.append(`answers[${field.key}][]`, v));
         } else if (value !== '' && value !== false && value != null) {
@@ -265,15 +327,19 @@ export class ApplyPage implements OnInit {
       const res = await this.api.submit(this.token, data);
       this.successMessage.set(res.message);
       this.state.set('done');
+      if (!localStorage.getItem(APPLIED_KEY)) {
+        localStorage.setItem(APPLIED_KEY, '1');
+        this.celebrate.set(true);
+      }
     } catch (err) {
       if (err instanceof HttpErrorResponse && err.status === 422) {
         const body = err.error as { errors?: Record<string, string[]>; message?: string };
         if (body.errors) this.errors.set(body.errors);
-        else this.generalError.set(body.message ?? 'Submission refused.');
+        else this.generalError.set(body.message ?? 'Candidature refusée.');
       } else if (err instanceof HttpErrorResponse && err.status === 429) {
-        this.generalError.set('Too many attempts, please try again later.');
+        this.generalError.set('Trop de tentatives, réessayez plus tard.');
       } else {
-        this.generalError.set('Submission failed, please try again.');
+        this.generalError.set("L'envoi a échoué, veuillez réessayer.");
       }
     } finally {
       this.busy.set(false);

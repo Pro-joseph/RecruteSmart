@@ -130,6 +130,28 @@ export interface Offer {
   form_fields?: OfferFormField[];
 }
 
+/** Structured fields extracted from a pasted job description (prefill helper). */
+export interface ExtractedOffer {
+  title: string | null;
+  type: string | null;
+  type_label: string | null;
+  description: string | null;
+  missions: string | null;
+  profile_wanted: string | null;
+  city: string | null;
+  country: string | null;
+  work_mode: string | null;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_currency: string | null;
+  positions_count: number | null;
+  required_skills: string[] | null;
+  preferred_skills: string[] | null;
+  min_experience_years: number | null;
+  education_level: string | null;
+  languages: { name: string; level: string | null }[] | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class OffersService {
   constructor(private readonly http: HttpClient) {}
@@ -146,6 +168,12 @@ export class OffersService {
     return firstValueFrom(this.http.get<{ data: Offer }>(`/api/v1/offers/${id}`)).then(
       (r) => r.data,
     );
+  }
+
+  extract(text: string): Promise<ExtractedOffer> {
+    return firstValueFrom(
+      this.http.post<{ data: ExtractedOffer }>('/api/v1/offers/extract', { text }),
+    ).then((r) => r.data);
   }
 
   create(payload: Partial<Offer>): Promise<Offer> {

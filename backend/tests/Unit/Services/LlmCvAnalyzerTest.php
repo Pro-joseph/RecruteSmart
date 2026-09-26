@@ -136,6 +136,38 @@ it('sends json_schema response_format in structured mode', function (): void {
     Http::assertSent(fn (Request $request): bool => $request['response_format']['type'] === 'json_schema');
 });
 
+it('falls back to json_object when upstream schema validation rejects the generation', function (): void {
+    $analyzer = makeLlmAnalyzer();
+    config()->set('llm.structured_output', true);
+    Http::fake([
+        '*' => Http::sequence()
+            ->push(['error' => ['message' => "Failed to validate JSON. Please adjust your prompt. See 'failed_generation' for more details."]], 400)
+            ->push(llmResponse(validLlmPayload())),
+    ]);
+
+    $result = $analyzer->analyze('CV', ['title' => 'Dev']);
+
+    expect($result->payload['summary'])->toBe('Profil backend de 3,5 ans.');
+
+    $requests = Http::recorded(fn (Request $request): bool => true)->map(fn ($pair) => $pair[0]);
+    expect($requests[0]['response_format']['type'])->toBe('json_schema')
+        ->and($requests[1]['response_format']['type'])->toBe('json_object')
+        // The schema must be in the prompt so json_object mode keeps the shape.
+        ->and(json_encode($requests[1]['messages'], JSON_UNESCAPED_UNICODE))
+        ->toContain('years_experience_total');
+});
+
+it('surfaces non-validation provider errors without falling back', function (): void {
+    $analyzer = makeLlmAnalyzer();
+    config()->set('llm.structured_output', true);
+    Http::fake(['*' => Http::response(['error' => ['message' => 'Server error']], 500)]);
+
+    expect(fn () => $analyzer->analyze('CV', ['title' => 'Dev']))
+        ->toThrow(ProviderException::class);
+
+    Http::assertSentCount(1);
+});
+
 it('provides a deterministic fake analyzer whose sample validates', function (): void {
     $sample = FakeCvAnalyzer::sample([
         'title' => 'Dev',

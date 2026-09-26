@@ -15,7 +15,7 @@ export const authGuard: CanActivateFn = async () => {
 export const guestGuard: CanActivateFn = async () => {
   const auth = inject(AuthService);
   const router = inject(Router);
-  const me = await auth.me();
+  const me = auth.user() ?? (await auth.me());
   return me ? router.createUrlTree(['/app/offers']) : true;
 };
 

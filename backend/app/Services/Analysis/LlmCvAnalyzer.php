@@ -21,14 +21,15 @@ class LlmCvAnalyzer implements CvAnalyzer
     public function analyze(string $cvText, array $offerContext): LlmAnalysisResult
     {
         $messages = [
-            ['role' => 'system', 'content' => $this->systemPrompt()],
+            ['role' => 'system', 'content' => $this->systemPrompt()."\n\nSchéma JSON attendu :\n".$this->schemaJson()],
             ['role' => 'user', 'content' => $this->userPrompt($cvText, $offerContext)],
         ];
 
         $errors = [];
+        $structured = (bool) config('llm.structured_output');
 
         for ($attempt = 0; $attempt < 2; $attempt++) {
-            $response = $this->call($messages);
+            $response = $this->call($messages, $structured);
             $payload = json_decode($response['content'], true);
 
             $errors = is_array($payload)
@@ -45,6 +46,9 @@ class LlmCvAnalyzer implements CvAnalyzer
                 );
             }
 
+            // Schema mode produced an invalid payload: retry free-form with
+            // corrective feedback (the local validator stays authoritative).
+            $structured = false;
             $messages[] = ['role' => 'assistant', 'content' => $response['content']];
             $messages[] = [
                 'role' => 'user',
@@ -60,14 +64,14 @@ class LlmCvAnalyzer implements CvAnalyzer
      * @param  list<array<string, mixed>>  $messages
      * @return array{content: string, tokens_in: int|null, tokens_out: int|null, model: string|null}
      */
-    private function call(array $messages): array
+    private function call(array $messages, bool $structured): array
     {
         $body = [
             'model' => config('llm.model'),
             'temperature' => config('llm.temperature'),
             'max_tokens' => config('llm.max_output_tokens'),
             'messages' => $messages,
-            'response_format' => $this->responseFormat(),
+            'response_format' => $this->responseFormat($structured),
         ];
 
         try {
@@ -88,8 +92,16 @@ class LlmCvAnalyzer implements CvAnalyzer
                 throw new ProviderException('Quota fournisseur IA atteint.', 'quota_exceeded', 429);
             }
 
+            $message = (string) ($response->json('error.message') ?? 'Erreur du fournisseur IA.');
+
+            // Upstream schema validation occasionally rejects the generation
+            // (Groq 'failed_generation'): retry free-form, validation still applies.
+            if ($structured && str_contains($message, 'failed_generation')) {
+                return $this->call($messages, false);
+            }
+
             throw new ProviderException(
-                (string) ($response->json('error.message') ?? 'Erreur du fournisseur IA.'),
+                $message,
                 'provider_error',
                 $response->status(),
             );
@@ -111,22 +123,29 @@ class LlmCvAnalyzer implements CvAnalyzer
     /**
      * @return array<string, mixed>
      */
-    private function responseFormat(): array
+    private function responseFormat(bool $structured): array
     {
-        if (! config('llm.structured_output')) {
+        if (! $structured) {
             return ['type' => 'json_object'];
         }
-
-        $schema = json_decode((string) file_get_contents(__DIR__.'/schemas/cv_analysis.schema.json'), true);
 
         return [
             'type' => 'json_schema',
             'json_schema' => [
                 'name' => 'cv_analysis',
                 'strict' => false,
-                'schema' => $schema,
+                'schema' => json_decode($this->schemaJson(), true),
             ],
         ];
+    }
+
+    /**
+     * The schema is also inlined in the system prompt: without it, json_object
+     * fallback responses come back with an ad-hoc structure.
+     */
+    private function schemaJson(): string
+    {
+        return (string) file_get_contents(__DIR__.'/schemas/cv_analysis.schema.json');
     }
 
     private function systemPrompt(): string

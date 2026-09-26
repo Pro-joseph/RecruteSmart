@@ -11,7 +11,10 @@ use App\Http\Requests\Offers\UpdateOfferRequest;
 use App\Http\Resources\OfferResource;
 use App\Jobs\AnalyzeApplicationJob;
 use App\Models\Offer;
+use App\Services\Analysis\InvalidAnalysisOutputException;
+use App\Services\Analysis\ProviderException;
 use App\Services\Audit\AuditLogger;
+use App\Services\Extraction\JdExtractor;
 use App\Services\Offers\OfferService;
 use App\Services\Offers\OfferStatsService;
 use Illuminate\Http\JsonResponse;
@@ -21,6 +24,28 @@ use Illuminate\Support\Facades\Gate;
 class OfferController extends Controller
 {
     public function __construct(private readonly OfferService $offers) {}
+
+    /** Prefill helper: extract structured offer fields from a pasted job description. */
+    public function extract(Request $request, JdExtractor $extractor): JsonResponse
+    {
+        Gate::authorize('create', Offer::class);
+
+        $validated = $request->validate([
+            'text' => ['required', 'string', 'min:80', 'max:'.(int) config('llm.max_input_chars', 30000)],
+        ]);
+
+        try {
+            $data = $extractor->extract($validated['text']);
+        } catch (ProviderException $e) {
+            $status = (int) $e->getCode();
+
+            return response()->json(['message' => $e->getMessage()], $status > 0 ? $status : 502);
+        } catch (InvalidAnalysisOutputException $e) {
+            return response()->json(['message' => $e->getMessage()], 502);
+        }
+
+        return response()->json(['data' => $data]);
+    }
 
     public function index(Request $request): JsonResponse
     {

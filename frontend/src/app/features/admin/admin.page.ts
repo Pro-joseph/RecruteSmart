@@ -1,11 +1,12 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AdminService, AdminUser, ModelUsage, UsageTotals } from '../../core/api/admin.service';
+import { CountUpDirective } from '../../core/ui/count-up.directive';
 
 @Component({
   selector: 'app-admin-page',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, CountUpDirective],
   template: `
     <p><a routerLink="/app/offers">← Offres</a></p>
     <h1>Administration</h1>
@@ -17,9 +18,9 @@ import { AdminService, AdminUser, ModelUsage, UsageTotals } from '../../core/api
     <h2 class="section-title">Usages IA</h2>
     @if (usage(); as u) {
       <div class="usage-chips">
-        <span class="chip">{{ u.totals.analyses_count }} analyse(s)</span>
-        <span class="chip">{{ u.totals.completed_count }} terminée(s)</span>
-        <span class="chip">{{ u.totals.failed_count }} échec(s)</span>
+        <span class="chip"><span [appCountUp]="u.totals.analyses_count"></span> analyse(s)</span>
+        <span class="chip"><span [appCountUp]="u.totals.completed_count"></span> terminée(s)</span>
+        <span class="chip"><span [appCountUp]="u.totals.failed_count"></span> échec(s)</span>
         <span class="chip">{{ formatTokens(u.totals.tokens_in) }} tokens in</span>
         <span class="chip">{{ formatTokens(u.totals.tokens_out) }} tokens out</span>
       </div>
@@ -52,8 +53,16 @@ import { AdminService, AdminUser, ModelUsage, UsageTotals } from '../../core/api
           </tbody>
         </table>
       </div>
-    } @else {
-      <p class="muted">Chargement…</p>
+    } @else if (loading()) {
+      <div class="panel" aria-label="Chargement des usages">
+        <span class="skeleton" style="width: 40%; margin-bottom: 0.6rem"></span>
+        <span class="skeleton" style="width: 70%"></span>
+      </div>
+    } @else if (!error()) {
+      <div class="empty">
+        <h3>Aucune analyse</h3>
+        <p>Les analyses IA apparaîtront ici dès la première candidature traitée.</p>
+      </div>
     }
 
     <h2 class="section-title">Comptes</h2>
@@ -88,8 +97,23 @@ import { AdminService, AdminUser, ModelUsage, UsageTotals } from '../../core/api
           </tbody>
         </table>
       </div>
-    } @else {
-      <p class="muted">Chargement…</p>
+    } @else if (loading()) {
+      <div class="panel table-wrap" aria-label="Chargement des comptes">
+        <table>
+          <tbody>
+            @for (row of [1, 2, 3]; track row) {
+              <tr class="skeleton-row">
+                <td colspan="5"><span class="skeleton"></span></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else if (!error()) {
+      <div class="empty">
+        <h3>Aucun compte</h3>
+        <p>Les comptes recruteurs apparaîtront ici après leur inscription.</p>
+      </div>
     }
   `,
   styles: [
@@ -141,6 +165,7 @@ export class AdminPage implements OnInit {
   readonly users = signal<AdminUser[]>([]);
   readonly usage = signal<{ totals: UsageTotals; per_model: ModelUsage[] } | null>(null);
   readonly error = signal<string | null>(null);
+  readonly loading = signal(true);
 
   constructor(private readonly api: AdminService) {}
 
@@ -155,6 +180,8 @@ export class AdminPage implements OnInit {
       this.usage.set(usage);
     } catch {
       this.error.set('Chargement des données administrateur impossible.');
+    } finally {
+      this.loading.set(false);
     }
   }
 

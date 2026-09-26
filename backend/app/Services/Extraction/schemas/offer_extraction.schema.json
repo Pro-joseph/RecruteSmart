@@ -1,0 +1,63 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "offer_extraction",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "title",
+        "type",
+        "type_label",
+        "description",
+        "missions",
+        "profile_wanted",
+        "city",
+        "country",
+        "work_mode",
+        "salary_min",
+        "salary_max",
+        "salary_currency",
+        "positions_count",
+        "required_skills",
+        "preferred_skills",
+        "min_experience_years",
+        "education_level",
+        "languages"
+    ],
+    "properties": {
+        "title": { "type": ["string", "null"] },
+        "type": { "type": ["string", "null"] },
+        "type_label": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] },
+        "missions": { "type": ["string", "null"] },
+        "profile_wanted": { "type": ["string", "null"] },
+        "city": { "type": ["string", "null"] },
+        "country": { "type": ["string", "null"] },
+        "work_mode": { "type": ["string", "null"] },
+        "salary_min": { "type": ["number", "null"] },
+        "salary_max": { "type": ["number", "null"] },
+        "salary_currency": { "type": ["string", "null"] },
+        "positions_count": { "type": ["integer", "null"] },
+        "required_skills": {
+            "type": ["array", "null"],
+            "items": { "type": "string" }
+        },
+        "preferred_skills": {
+            "type": ["array", "null"],
+            "items": { "type": "string" }
+        },
+        "min_experience_years": { "type": ["number", "null"] },
+        "education_level": { "type": ["string", "null"] },
+        "languages": {
+            "type": ["array", "null"],
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name"],
+                "properties": {
+                    "name": { "type": "string" },
+                    "level": { "type": ["string", "null"] }
+                }
+            }
+        }
+    }
+}

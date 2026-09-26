@@ -33,7 +33,16 @@ const KEYS: TemplateKey[] = ['confirmation', 'invitation', 'refusal'];
     }
 
     @if (loading()) {
-      <p class="muted">Chargement…</p>
+      <section class="panel card" aria-label="Chargement des modèles">
+        <span class="skeleton" style="width: 35%; height: 1.1rem"></span>
+        <span class="skeleton" style="width: 80%"></span>
+        <span class="skeleton" style="width: 65%; height: 5rem"></span>
+      </section>
+      <section class="panel card" aria-hidden="true">
+        <span class="skeleton" style="width: 30%; height: 1.1rem"></span>
+        <span class="skeleton" style="width: 75%"></span>
+        <span class="skeleton" style="width: 60%; height: 5rem"></span>
+      </section>
     } @else {
       @for (key of keys; track key) {
         <section class="panel card">
@@ -67,14 +76,40 @@ const KEYS: TemplateKey[] = ['confirmation', 'invitation', 'refusal'];
           </div>
 
           <div class="actions">
-            @if (drafts[key]()?.customised) {
-              <button type="button" class="btn btn-ghost" (click)="reset(key)" [disabled]="busy()">
-                Réinitialiser
+            @if (confirmReset() === key) {
+              <span class="confirm-text">Réinitialiser ce modèle ?</span>
+              <button type="button" class="btn btn-danger" (click)="reset(key)" [disabled]="busy()">
+                {{ busy() ? 'Réinitialisation…' : 'Confirmer' }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-ghost"
+                (click)="confirmReset.set(null)"
+                [disabled]="busy()"
+              >
+                Annuler
+              </button>
+            } @else {
+              @if (drafts[key]()?.customised) {
+                <button
+                  type="button"
+                  class="btn btn-ghost"
+                  (click)="confirmReset.set(key)"
+                  [disabled]="busy()"
+                >
+                  Réinitialiser
+                </button>
+              }
+              <button
+                type="button"
+                class="btn btn-primary"
+                [class.is-busy]="busy()"
+                (click)="save(key)"
+                [disabled]="busy()"
+              >
+                {{ busy() ? 'Enregistrement…' : 'Enregistrer' }}
               </button>
             }
-            <button type="button" class="btn btn-primary" (click)="save(key)" [disabled]="busy()">
-              Enregistrer
-            </button>
           </div>
         </section>
       }
@@ -163,6 +198,7 @@ export class SettingsPage implements OnInit {
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
   readonly notice = signal<string | null>(null);
+  readonly confirmReset = signal<TemplateKey | null>(null);
 
   constructor(private readonly api: EmailTemplatesService) {}
 
@@ -208,8 +244,10 @@ export class SettingsPage implements OnInit {
       await this.api.reset(key);
       await this.load();
       this.notice.set('Modèle réinitialisé.');
+      this.confirmReset.set(null);
     } catch {
       this.error.set('Réinitialisation impossible.');
+      this.confirmReset.set(null);
     } finally {
       this.busy.set(false);
     }

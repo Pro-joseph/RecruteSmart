@@ -1,0 +1,2 @@
+# Shell scripts ship to Linux containers: never check them out with CRLF.
+*.sh text eol=lf

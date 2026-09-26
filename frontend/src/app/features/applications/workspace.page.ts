@@ -22,6 +22,7 @@ import {
 import { SavedViewsComponent } from './saved-views.component';
 import { TransferDialogComponent, TransferScope } from './transfer-dialog.component';
 import { STATUS_BADGES, STATUS_LABELS, VERDICT_BADGES, VERDICT_LABELS } from './application-labels';
+import { CountUpDirective } from '../../core/ui/count-up.directive';
 
 interface SortableColumn {
   key: string;
@@ -45,6 +46,7 @@ const SORTABLE: SortableColumn[] = [
     ListFiltersComponent,
     SavedViewsComponent,
     TransferDialogComponent,
+    CountUpDirective,
   ],
   template: `
     <p><a routerLink="/app/offers">← Offres</a></p>
@@ -62,17 +64,21 @@ const SORTABLE: SortableColumn[] = [
 
     @if (stats(); as s) {
       <div class="stat-chips" aria-label="Statistiques de l'offre">
-        <span class="chip">{{ s.applications_count }} candidature(s)</span>
+        <span class="chip"><span [appCountUp]="s.applications_count"></span> candidature(s)</span>
         @if (s.avg_match_score !== null) {
-          <span class="chip">Score moyen {{ s.avg_match_score }}%</span>
+          <span class="chip">Score moyen <span [appCountUp]="s.avg_match_score"></span>%</span>
         }
         @if (s.avg_ats_score !== null) {
-          <span class="chip">ATS moyen {{ s.avg_ats_score }}</span>
+          <span class="chip">ATS moyen <span [appCountUp]="s.avg_ats_score"></span></span>
         }
-        <span class="chip">{{ s.score_buckets['80_100'] }} ≥ 80%</span>
-        <span class="chip">{{ s.score_buckets['40_59'] + s.score_buckets['0_39'] }} &lt; 60%</span>
+        <span class="chip"><span [appCountUp]="s.score_buckets['80_100']"></span> ≥ 80%</span>
+        <span class="chip">
+          <span [appCountUp]="s.score_buckets['40_59'] + s.score_buckets['0_39']"></span> &lt; 60%
+        </span>
         @if (s.score_buckets.unscored) {
-          <span class="chip muted-chip">{{ s.score_buckets.unscored }} non analysée(s)</span>
+          <span class="chip muted-chip">
+            <span [appCountUp]="s.score_buckets.unscored"></span> non analysée(s)
+          </span>
         }
       </div>
     }
@@ -198,7 +204,9 @@ const SORTABLE: SortableColumn[] = [
                       "
                       [class.score-low]="app.analysis!.match_score! < 40"
                     >
-                      <span class="score-value">{{ app.analysis!.match_score }}%</span>
+                      <span class="score-value">
+                        <span [appCountUp]="app.analysis!.match_score"></span>%
+                      </span>
                       <span class="score-meter">
                         <i [style.width.%]="app.analysis!.match_score"></i>
                       </span>

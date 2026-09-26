@@ -10,6 +10,7 @@ import {
   FicheFile,
 } from '../../core/api/applications.service';
 import { ProcessPanelComponent } from './process-panel.component';
+import { CountUpDirective } from '../../core/ui/count-up.directive';
 import {
   EMPTY_FILTERS,
   ListFilters,
@@ -50,335 +51,383 @@ const EVENT_BADGES: Record<string, string> = {
 @Component({
   selector: 'app-candidate-fiche',
   standalone: true,
-  imports: [RouterLink, FormsModule, ProcessPanelComponent],
+  imports: [RouterLink, FormsModule, ProcessPanelComponent, CountUpDirective],
   template: `
-    <p>
-      <a [routerLink]="['/app/offers', offerId]" [queryParams]="listQuery()">
-        ← Retour à la liste
-      </a>
-    </p>
+    <div class="fiche-root" [class.tumble-out]="deleting()">
+      <p>
+        <a [routerLink]="['/app/offers', offerId]" [queryParams]="listQuery()">
+          ← Retour à la liste
+        </a>
+      </p>
 
-    @if (error()) {
-      <p class="alert" role="alert">{{ error() }}</p>
-    }
+      @if (error()) {
+        <p class="alert" role="alert">{{ error() }}</p>
+      }
 
-    @if (app(); as a) {
-      <header class="fiche-head">
-        <div>
-          <h1>{{ a.full_name }}</h1>
-          <p class="muted">
-            <a [href]="'mailto:' + a.email">{{ a.email }}</a>
-            @if (a.phone) {
-              · {{ a.phone }}
-            }
-            · Candidature du {{ formatDate(a.created_at) }}
-          </p>
-          <p class="muted small">{{ a.offer.title }}</p>
-        </div>
-        <div class="head-side">
-          <label>
-            Statut
-            <select [ngModel]="a.status" (ngModelChange)="changeStatus($event)">
-              @for (s of statuses; track s) {
-                <option [value]="s">{{ statusLabels[s] }}</option>
+      @if (app(); as a) {
+        <header class="fiche-head">
+          <div>
+            <h1>{{ a.full_name }}</h1>
+            <p class="muted">
+              <a [href]="'mailto:' + a.email">{{ a.email }}</a>
+              @if (a.phone) {
+                · {{ a.phone }}
               }
-            </select>
-          </label>
-          <div class="nav-arrows">
-            <button
-              type="button"
-              class="btn"
-              (click)="open(prev()!.id)"
-              [disabled]="!prev()"
-              title="Candidat précédent"
-            >
-              ←
-            </button>
-            <button
-              type="button"
-              class="btn"
-              (click)="open(next()!.id)"
-              [disabled]="!next()"
-              title="Candidat suivant"
-            >
-              →
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div class="fiche-grid">
-        <div class="col-main">
-          <section class="panel section">
-            <h2>Analyse</h2>
-            @if (a.analysis; as an) {
-              @if (an.is_stale) {
-                <p class="stale-note">
-                  Les critères de l'offre ont changé : ce score est obsolète.
-                  <button type="button" class="btn" (click)="reanalyze()">Recalculer</button>
-                </p>
-              }
-              @if (an.status !== 'completed') {
-                <p class="muted">
-                  @switch (an.status) {
-                    @case ('pending') {
-                      Analyse en attente…
-                    }
-                    @case ('processing') {
-                      Analyse en cours…
-                    }
-                    @case ('failed') {
-                      Analyse échouée : {{ an.error_message || an.error_code }}
-                      <button type="button" class="btn" (click)="reanalyze()">Relancer</button>
-                    }
-                  }
-                </p>
-              } @else {
-                <div class="scores">
-                  <div
-                    class="score big"
-                    [class.score-good]="an.match_score != null && an.match_score >= 70"
-                    [class.score-mid]="
-                      an.match_score != null && an.match_score >= 40 && an.match_score < 70
-                    "
-                    [class.score-low]="an.match_score != null && an.match_score < 40"
-                  >
-                    <span class="score-value">
-                      {{ an.match_score != null ? an.match_score + '%' : '—' }}
-                    </span>
-                    <span class="muted small">Correspondance</span>
-                    <span class="score-meter">
-                      <i [style.width.%]="an.match_score ?? 0"></i>
-                    </span>
-                  </div>
-                  <div class="score big">
-                    <span class="score-value">{{ an.ats_score ?? '—' }}</span>
-                    <span class="muted small">Score ATS</span>
-                    <span class="score-meter">
-                      <i [style.width.%]="an.ats_score ?? 0"></i>
-                    </span>
-                  </div>
-                  @if (an.ats_verdict; as v) {
-                    <span [class]="'badge ' + (VERDICT_BADGES[v] ?? '') + ' verdict'">
-                      {{ VERDICT_LABELS[v] ?? v }}
-                    </span>
-                  }
-                </div>
-
-                @if (an.summary) {
-                  <p class="summary">{{ an.summary }}</p>
-                }
-
-                <div class="two-cols">
-                  <div>
-                    <h3>Points forts</h3>
-                    <ul class="ticks good">
-                      @for (s of an.strengths ?? []; track s) {
-                        <li>{{ s }}</li>
-                      } @empty {
-                        <li class="muted">Aucun point fort identifié.</li>
-                      }
-                    </ul>
-                  </div>
-                  <div>
-                    <h3>Manques</h3>
-                    <ul class="ticks gap">
-                      @for (g of an.gaps ?? []; track g) {
-                        <li>{{ g }}</li>
-                      } @empty {
-                        <li class="muted">Aucun manque identifié.</li>
-                      }
-                    </ul>
-                  </div>
-                </div>
-
-                @if (an.match_breakdown; as breakdown) {
-                  <h3>Détail par critère</h3>
-                  <table class="breakdown">
-                    <thead>
-                      <tr>
-                        <th>Critère</th>
-                        <th>Sous-score</th>
-                        <th>Poids</th>
-                        <th>Justification</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (entry of breakdownEntries(breakdown); track entry.key) {
-                        <tr>
-                          <td>
-                            {{ criteriaLabel(entry.key) }}
-                            @if (an.knockout_flags?.[entry.key]) {
-                              <span class="badge badge-red">éliminatoire</span>
-                            }
-                          </td>
-                          <td class="mono">{{ entry.value.score }}/100</td>
-                          <td class="mono">{{ entry.value.weight }}</td>
-                          <td>{{ entry.value.evidence }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                }
-
-                @if (an.ats_checks; as checks) {
-                  <h3>Contrôles ATS</h3>
-                  <ul class="checks">
-                    @for (check of checks; track check.code) {
-                      <li [class]="check.passed ? 'pass' : 'fail'">
-                        <span class="mono">{{ check.code }}</span>
-                        <span class="mono points">{{ check.points }}/{{ check.max }}</span>
-                        <span>{{ check.message }}</span>
-                        @if (!check.passed && check.advice) {
-                          <em>{{ check.advice }}</em>
-                        }
-                      </li>
-                    }
-                  </ul>
-                }
-
-                @if (an.anomalies?.length) {
-                  <div class="anomalies">
-                    <h3>Signalements</h3>
-                    <ul>
-                      @for (a2 of an.anomalies; track a2) {
-                        <li>{{ a2 }}</li>
-                      }
-                    </ul>
-                  </div>
-                }
-              }
-            } @else {
-              <p class="muted">Aucune analyse pour cette candidature.</p>
-            }
-          </section>
-
-          <section class="panel section">
-            <h2>Réponses</h2>
-            <dl class="answers">
-              @for (answer of a.answers; track answer.key) {
-                <dt>{{ answer.label }}</dt>
-                <dd>
-                  @if (answer.value) {
-                    {{ answer.value }}
-                  } @else {
-                    <span class="muted">—</span>
-                  }
-                </dd>
-              }
-            </dl>
-          </section>
-
-          <section class="panel section">
-            <h2>Fichiers</h2>
-            <ul class="files">
-              @for (file of a.files; track file.key) {
-                <li>
-                  <span class="file-name">{{ file.name }}</span>
-                  <span class="muted small">{{ formatSize(file.size) }}</span>
-                  @if (isPdf(file)) {
-                    <button type="button" class="btn" (click)="preview(file)">Aperçu</button>
-                  }
-                  <button type="button" class="btn" (click)="download(file)">Télécharger</button>
-                </li>
-              }
-            </ul>
-            @if (previewUrl(); as url) {
-              <iframe class="cv-frame" [src]="url" title="Aperçu du CV"></iframe>
-            }
-          </section>
-
-          <app-process-panel [appId]="appId" (changed)="reloadAfterProcess()" />
-        </div>
-
-        <div class="col-side">
-          <section class="panel section">
-            <h2>Évaluation</h2>
-            <div class="stars" role="radiogroup" aria-label="Note du candidat">
-              @for (star of [1, 2, 3, 4, 5]; track star) {
-                <button
-                  type="button"
-                  role="radio"
-                  class="star"
-                  [class.on]="star <= (a.rating ?? 0)"
-                  [attr.aria-checked]="star === (a.rating ?? 0)"
-                  (click)="rate(star)"
-                >
-                  ★
-                </button>
-              }
-            </div>
-
-            <label>
-              Note interne
-              <textarea
-                rows="3"
-                placeholder="Visible uniquement par votre équipe…"
-                [(ngModel)]="noteDraft"
-              ></textarea>
-            </label>
-            <button type="button" class="btn btn-primary" (click)="saveNote()">
-              Enregistrer la note
-            </button>
-          </section>
-
-          <section class="panel section">
-            <h2>Historique</h2>
-            <ol class="timeline">
-              @for (event of events(); track event.id) {
-                <li>
-                  <span [class]="'badge ' + (EVENT_BADGES[event.type] ?? '')">
-                    {{ EVENT_LABELS[event.type] ?? event.type }}
-                  </span>
-                  <div class="muted small">
-                    {{ formatDate(event.created_at) }}
-                    @if (event.user) {
-                      · {{ event.user.name }}
-                    }
-                  </div>
-                  <div class="event-detail">{{ eventDetail(event) }}</div>
-                </li>
-              } @empty {
-                <li class="muted">Aucun événement.</li>
-              }
-            </ol>
-          </section>
-
-          <section class="panel section privacy">
-            <h2>Données personnelles</h2>
-            <p class="muted small">
-              Droits d'accès du candidat (RGPD) : export complet et suppression définitive des
-              données et des fichiers.
+              · Candidature du {{ formatDate(a.created_at) }}
             </p>
-            <div class="privacy-actions">
-              <button type="button" class="btn" (click)="exportZip()" [disabled]="busy()">
-                Exporter (ZIP)
+            <p class="muted small">{{ a.offer.title }}</p>
+          </div>
+          <div class="head-side">
+            <label>
+              Statut
+              <select [ngModel]="a.status" (ngModelChange)="changeStatus($event)">
+                @for (s of statuses; track s) {
+                  <option [value]="s">{{ statusLabels[s] }}</option>
+                }
+              </select>
+            </label>
+            <div class="nav-arrows">
+              <button
+                type="button"
+                class="btn"
+                (click)="open(prev()!.id)"
+                [disabled]="!prev()"
+                title="Candidat précédent"
+              >
+                ←
               </button>
               <button
                 type="button"
-                class="btn btn-danger"
-                (click)="confirmDelete()"
-                [disabled]="busy()"
+                class="btn"
+                (click)="open(next()!.id)"
+                [disabled]="!next()"
+                title="Candidat suivant"
               >
-                Supprimer définitivement
+                →
               </button>
             </div>
-            @if (confirming()) {
-              <p class="confirm-note">
-                Supprimer <strong>{{ app()!.full_name }}</strong> ? Les fichiers seront effacés et
-                cette action est irréversible.
+          </div>
+        </header>
+
+        <div class="fiche-grid">
+          <div class="col-main">
+            <section class="panel section">
+              <h2>Analyse</h2>
+              @if (a.analysis; as an) {
+                @if (an.is_stale) {
+                  <p class="stale-note">
+                    Les critères de l'offre ont changé : ce score est obsolète.
+                    <button type="button" class="btn" (click)="reanalyze()">Recalculer</button>
+                  </p>
+                }
+                @if (an.status !== 'completed') {
+                  <p class="muted">
+                    @switch (an.status) {
+                      @case ('pending') {
+                        Analyse en attente…
+                      }
+                      @case ('processing') {
+                        Analyse en cours…
+                      }
+                      @case ('failed') {
+                        Analyse échouée : {{ an.error_message || an.error_code }}
+                        <button type="button" class="btn" (click)="reanalyze()">Relancer</button>
+                      }
+                    }
+                  </p>
+                } @else {
+                  <div class="scores">
+                    <div
+                      class="score big"
+                      [class.score-good]="an.match_score != null && an.match_score >= 70"
+                      [class.score-mid]="
+                        an.match_score != null && an.match_score >= 40 && an.match_score < 70
+                      "
+                      [class.score-low]="an.match_score != null && an.match_score < 40"
+                    >
+                      <span class="score-value">
+                        @if (an.match_score != null) {
+                          <span [appCountUp]="an.match_score"></span>%
+                        } @else {
+                          —
+                        }
+                      </span>
+                      <span class="muted small">Correspondance</span>
+                      <span class="score-meter">
+                        <i [style.width.%]="an.match_score ?? 0"></i>
+                      </span>
+                    </div>
+                    <div class="score big">
+                      <span class="score-value">
+                        @if (an.ats_score != null) {
+                          <span [appCountUp]="an.ats_score"></span>
+                        } @else {
+                          —
+                        }
+                      </span>
+                      <span class="muted small">Score ATS</span>
+                      <span class="score-meter">
+                        <i [style.width.%]="an.ats_score ?? 0"></i>
+                      </span>
+                    </div>
+                    @if (an.ats_verdict; as v) {
+                      <span [class]="'badge ' + (VERDICT_BADGES[v] ?? '') + ' verdict'">
+                        {{ VERDICT_LABELS[v] ?? v }}
+                      </span>
+                    }
+                  </div>
+
+                  @if (an.summary) {
+                    <p class="summary">{{ an.summary }}</p>
+                  }
+
+                  <div class="two-cols">
+                    <div>
+                      <h3>Points forts</h3>
+                      <ul class="ticks good">
+                        @for (s of an.strengths ?? []; track s) {
+                          <li>{{ s }}</li>
+                        } @empty {
+                          <li class="muted">Aucun point fort identifié.</li>
+                        }
+                      </ul>
+                    </div>
+                    <div>
+                      <h3>Manques</h3>
+                      <ul class="ticks gap">
+                        @for (g of an.gaps ?? []; track g) {
+                          <li>{{ g }}</li>
+                        } @empty {
+                          <li class="muted">Aucun manque identifié.</li>
+                        }
+                      </ul>
+                    </div>
+                  </div>
+
+                  @if (an.match_breakdown; as breakdown) {
+                    <h3>Détail par critère</h3>
+                    <table class="breakdown">
+                      <thead>
+                        <tr>
+                          <th>Critère</th>
+                          <th>Sous-score</th>
+                          <th>Poids</th>
+                          <th>Justification</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (entry of breakdownEntries(breakdown); track entry.key) {
+                          <tr>
+                            <td>
+                              {{ criteriaLabel(entry.key) }}
+                              @if (an.knockout_flags?.[entry.key]) {
+                                <span class="badge badge-red">éliminatoire</span>
+                              }
+                            </td>
+                            <td class="mono">{{ entry.value.score }}/100</td>
+                            <td class="mono">{{ entry.value.weight }}</td>
+                            <td>{{ entry.value.evidence }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  }
+
+                  @if (an.ats_checks; as checks) {
+                    <h3>Contrôles ATS</h3>
+                    <ul class="checks">
+                      @for (check of checks; track check.code) {
+                        <li [class]="check.passed ? 'pass' : 'fail'">
+                          <span class="mono">{{ check.code }}</span>
+                          <span class="mono points">{{ check.points }}/{{ check.max }}</span>
+                          <span>{{ check.message }}</span>
+                          @if (!check.passed && check.advice) {
+                            <em>{{ check.advice }}</em>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  }
+
+                  @if (an.anomalies?.length) {
+                    <div class="anomalies">
+                      <h3>Signalements</h3>
+                      <ul>
+                        @for (a2 of an.anomalies; track a2) {
+                          <li>{{ a2 }}</li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                }
+              } @else {
+                <p class="muted">Aucune analyse pour cette candidature.</p>
+              }
+            </section>
+
+            <section class="panel section">
+              <h2>Réponses</h2>
+              <dl class="answers">
+                @for (answer of a.answers; track answer.key) {
+                  <dt>{{ answer.label }}</dt>
+                  <dd>
+                    @if (answer.value) {
+                      {{ answer.value }}
+                    } @else {
+                      <span class="muted">—</span>
+                    }
+                  </dd>
+                }
+              </dl>
+            </section>
+
+            <section class="panel section">
+              <h2>Fichiers</h2>
+              <ul class="files">
+                @for (file of a.files; track file.key) {
+                  <li>
+                    <span class="file-name">{{ file.name }}</span>
+                    <span class="muted small">{{ formatSize(file.size) }}</span>
+                    @if (isPdf(file)) {
+                      <button type="button" class="btn" (click)="preview(file)">Aperçu</button>
+                    }
+                    <button type="button" class="btn" (click)="download(file)">Télécharger</button>
+                  </li>
+                }
+              </ul>
+              @if (previewUrl(); as url) {
+                <iframe class="cv-frame" [src]="url" title="Aperçu du CV"></iframe>
+              }
+            </section>
+
+            <app-process-panel [appId]="appId" (changed)="reloadAfterProcess()" />
+          </div>
+
+          <div class="col-side">
+            <section class="panel section">
+              <h2>Évaluation</h2>
+              <div class="stars" role="radiogroup" aria-label="Note du candidat">
+                @for (star of [1, 2, 3, 4, 5]; track star) {
+                  <button
+                    type="button"
+                    role="radio"
+                    class="star"
+                    [class.on]="star <= (a.rating ?? 0)"
+                    [attr.aria-checked]="star === (a.rating ?? 0)"
+                    (click)="rate(star)"
+                  >
+                    ★
+                  </button>
+                }
+              </div>
+
+              <label>
+                Note interne
+                <textarea
+                  rows="3"
+                  placeholder="Visible uniquement par votre équipe…"
+                  [(ngModel)]="noteDraft"
+                ></textarea>
+              </label>
+              <button type="button" class="btn btn-primary" (click)="saveNote()">
+                Enregistrer la note
+              </button>
+            </section>
+
+            <section class="panel section">
+              <h2>Historique</h2>
+              <ol class="timeline">
+                @for (event of events(); track event.id) {
+                  <li>
+                    <span [class]="'badge ' + (EVENT_BADGES[event.type] ?? '')">
+                      {{ EVENT_LABELS[event.type] ?? event.type }}
+                    </span>
+                    <div class="muted small">
+                      {{ formatDate(event.created_at) }}
+                      @if (event.user) {
+                        · {{ event.user.name }}
+                      }
+                    </div>
+                    <div class="event-detail">{{ eventDetail(event) }}</div>
+                  </li>
+                } @empty {
+                  <li class="muted">Aucun événement.</li>
+                }
+              </ol>
+            </section>
+
+            <section class="panel section privacy">
+              <h2>Données personnelles</h2>
+              <p class="muted small">
+                Droits d'accès du candidat (RGPD) : export complet et suppression définitive des
+                données et des fichiers.
               </p>
               <div class="privacy-actions">
-                <button type="button" class="btn btn-danger" (click)="deleteCandidate()">
-                  Oui, supprimer
+                <button type="button" class="btn" (click)="exportZip()" [disabled]="busy()">
+                  Exporter (ZIP)
                 </button>
-                <button type="button" class="btn" (click)="confirming.set(false)">Annuler</button>
+                <button
+                  type="button"
+                  class="btn btn-danger"
+                  (click)="confirmDelete()"
+                  [disabled]="busy()"
+                >
+                  Supprimer définitivement
+                </button>
               </div>
-            }
-          </section>
+              @if (confirming()) {
+                <p class="confirm-note">
+                  Supprimer <strong>{{ app()!.full_name }}</strong> ? Les fichiers seront effacés et
+                  cette action est irréversible.
+                </p>
+                <div class="privacy-actions">
+                  <button type="button" class="btn btn-danger" (click)="deleteCandidate()">
+                    Oui, supprimer
+                  </button>
+                  <button type="button" class="btn" (click)="confirming.set(false)">Annuler</button>
+                </div>
+              }
+            </section>
+          </div>
         </div>
-      </div>
-    }
+      } @else if (loading()) {
+        <header class="fiche-head" aria-label="Chargement de la fiche">
+          <div style="width: 100%">
+            <span class="skeleton" style="width: 30%; height: 1.7rem; margin-bottom: 0.5rem"></span>
+            <span class="skeleton" style="width: 55%"></span>
+          </div>
+        </header>
+        <div class="fiche-grid">
+          <div class="col-main">
+            <section class="panel section" aria-hidden="true">
+              <span
+                class="skeleton"
+                style="width: 25%; height: 1.1rem; margin-bottom: 0.9rem"
+              ></span>
+              <span
+                class="skeleton"
+                style="width: 60%; height: 2.4rem; margin-bottom: 0.6rem"
+              ></span>
+              <span class="skeleton" style="width: 90%"></span>
+              <span class="skeleton" style="width: 75%; margin-top: 0.4rem"></span>
+            </section>
+          </div>
+          <div class="col-side">
+            <section class="panel section" aria-hidden="true">
+              <span
+                class="skeleton"
+                style="width: 40%; height: 1.1rem; margin-bottom: 0.9rem"
+              ></span>
+              <span
+                class="skeleton"
+                style="width: 55%; height: 1.6rem; margin-bottom: 0.8rem"
+              ></span>
+              <span class="skeleton" style="width: 100%; height: 3rem"></span>
+            </section>
+          </div>
+        </div>
+      }
+    </div>
   `,
   styles: [
     `
@@ -729,6 +778,8 @@ export class CandidateFichePage implements OnInit {
   private readonly previewRaw = signal<string | null>(null);
   readonly busy = signal(false);
   readonly confirming = signal(false);
+  readonly loading = signal(true);
+  readonly deleting = signal(false);
 
   readonly statuses = STATUSES;
   readonly statusLabels = STATUS_LABELS;
@@ -775,6 +826,8 @@ export class CandidateFichePage implements OnInit {
       this.error.set(null);
     } catch {
       this.error.set('Impossible de charger la fiche du candidat.');
+    } finally {
+      this.loading.set(false);
     }
   }
 
@@ -947,6 +1000,8 @@ export class CandidateFichePage implements OnInit {
     this.busy.set(true);
     try {
       await this.api.destroy(current.id);
+      this.deleting.set(true);
+      await new Promise((resolve) => setTimeout(resolve, 300));
       await this.router.navigate(['/app/offers', this.offerId], {
         queryParams: this.listQuery(),
       });
@@ -954,6 +1009,7 @@ export class CandidateFichePage implements OnInit {
       this.error.set('Suppression impossible.');
       this.confirming.set(false);
       this.busy.set(false);
+      this.deleting.set(false);
     }
   }
 

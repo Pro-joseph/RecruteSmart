@@ -10,15 +10,34 @@ import { AuthService } from '../../core/auth/auth.service';
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink],
   template: `
-    <h1>Forgot password</h1>
+    <h1>Mot de passe oublié</h1>
     <form [formGroup]="form" (ngSubmit)="submit()">
-      <label>Email <input type="email" formControlName="email" autocomplete="email" /></label>
+      <label>
+        E-mail
+        <input type="email" formControlName="email" autocomplete="email" />
+        @if (invalid()) {
+          <span class="field-error">
+            {{
+              form.controls.email.hasError('required')
+                ? "L'e-mail est requis."
+                : "Format d'e-mail invalide."
+            }}
+          </span>
+        }
+      </label>
       @if (message()) {
         <p role="status">{{ message() }}</p>
       }
-      <button type="submit" [disabled]="form.invalid || busy()">Send reset link</button>
+      <button
+        type="submit"
+        class="btn btn-primary"
+        [disabled]="form.invalid || busy()"
+        [class.is-busy]="busy()"
+      >
+        {{ busy() ? 'Envoi en cours…' : 'Envoyer le lien' }}
+      </button>
     </form>
-    <p><a routerLink="/login">Back to login</a></p>
+    <p><a routerLink="/login">Retour à la connexion</a></p>
   `,
 })
 export class ForgotPasswordPage {
@@ -30,14 +49,24 @@ export class ForgotPasswordPage {
   });
   readonly message = signal<string | null>(null);
   readonly busy = signal(false);
+  readonly submitted = signal(false);
 
   constructor(
     private readonly http: HttpClient,
     private readonly auth: AuthService,
   ) {}
 
+  invalid(): boolean {
+    const c = this.form.controls.email;
+    return c.invalid && (c.touched || this.submitted());
+  }
+
   async submit(): Promise<void> {
-    if (this.form.invalid) return;
+    this.submitted.set(true);
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
     this.busy.set(true);
     try {
       await this.auth.csrf();
@@ -48,7 +77,7 @@ export class ForgotPasswordPage {
       );
       this.message.set(res.message);
     } catch {
-      this.message.set('If this email exists, a reset link was sent.');
+      this.message.set('Si cet e-mail existe, un lien de réinitialisation a été envoyé.');
     } finally {
       this.busy.set(false);
     }

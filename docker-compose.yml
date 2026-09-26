@@ -45,6 +45,7 @@ services:
       DB_HOST: postgres
       REDIS_HOST: redis
       MAIL_HOST: mailpit
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-test@example.com}
     depends_on:
       postgres:
         condition: service_healthy

@@ -107,11 +107,12 @@ const STATUS_BADGES: Record<string, string> = {
             } @empty {
               <tr>
                 <td colspan="7">
-                  <div class="empty">
+                  <div class="empty hint-arrow">
                     <h3>Aucun transfert</h3>
                     <p>
                       Sélectionnez des candidatures dans l'espace de travail, puis transférez-les.
                     </p>
+                    <p><a class="btn" routerLink="/app/offers">Voir les offres</a></p>
                   </div>
                 </td>
               </tr>
